@@ -16,6 +16,9 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Alert from '@mui/material/Alert';
 
+// Get the API base URL from environment variables for deployment
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+
 export default function TrialDetails() {
   const { trialId } = useParams();
   const navigate = useNavigate();
@@ -25,7 +28,7 @@ export default function TrialDetails() {
   const [matchedTutors, setMatchedTutors] = useState([]);
   const [isMatching, setIsMatching] = useState(false);
   const [assigningTutorId, setAssigningTutorId] = useState(null);
-  const [isStartingOutreach, setIsStartingOutreach] = useState(false); // <-- NEW: Loading state for automation button
+  const [isStartingOutreach, setIsStartingOutreach] = useState(false);
 
   // This function will be called to refresh the trial status from the DB
   const fetchTrialDetails = async () => {
@@ -44,11 +47,10 @@ export default function TrialDetails() {
   }, [trialId, navigate]);
 
   const handleFindMatch = async () => {
-    // ... (This function remains the same as before)
     setIsMatching(true);
     setMatchedTutors([]);
     try {
-      const response = await fetch('http://localhost:4000/api/match-request', {
+      const response = await fetch(`${API_URL}/api/match-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trialId: trial.id }),
@@ -56,7 +58,9 @@ export default function TrialDetails() {
       const data = await response.json();
       if (response.ok && data.matchedTutors) {
         setMatchedTutors(data.matchedTutors);
-      } else { throw new Error(data.error || 'Failed to fetch matches.'); }
+      } else { 
+        throw new Error(data.error || 'Failed to fetch matches.');
+      }
     } catch (error) {
       console.error('Failed to fetch matches', error);
       alert('Failed to fetch matches. Is the backend server running?');
@@ -65,16 +69,17 @@ export default function TrialDetails() {
   };
 
   const handleAssignTutor = async (tutorId) => {
-    // ... (This function remains the same as before)
      setAssigningTutorId(tutorId);
     try {
-      const response = await fetch(`http://localhost:4000/api/trials/${trialId}/assign`, {
+      const response = await fetch(`${API_URL}/api/trials/${trialId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tutorId }),
       });
       const data = await response.json();
-      if (!response.ok) { throw new Error(data.error || 'Failed to assign tutor.'); }
+      if (!response.ok) { 
+        throw new Error(data.error || 'Failed to assign tutor.');
+      }
       alert('Tutor successfully assigned and trial confirmed!');
       navigate('/');
     } catch (error) {
@@ -84,18 +89,19 @@ export default function TrialDetails() {
     setAssigningTutorId(null);
   };
 
-  // --- NEW FUNCTION TO START THE AUTOMATED SEQUENCE ---
   const handleStartOutreach = async () => {
     setIsStartingOutreach(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/trials/${trialId}/start-outreach`, {
+      const response = await fetch(`${API_URL}/api/trials/${trialId}/start-outreach`, {
         method: 'POST',
       });
       const data = await response.json();
-      if (!response.ok) { throw new Error(data.message || 'Failed to start outreach.'); }
+      if (!response.ok) { 
+        throw new Error(data.message || 'Failed to start outreach.'); 
+      }
       
-      alert(data.message); // Show success message from backend
-      await fetchTrialDetails(); // Refresh trial details to show the new "Outreach in Progress" status
+      alert(data.message);
+      await fetchTrialDetails(); 
 
     } catch (error) {
       console.error('Failed to start outreach', error);
@@ -104,13 +110,16 @@ export default function TrialDetails() {
     setIsStartingOutreach(false);
   };
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
-  if (!trial) return <Typography>Trial not found. <Link to="/">Go back to Dashboard</Link>.</Typography>;
+  if (loading) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
+  }
+  if (!trial) {
+    return <Typography>Trial not found. <Link to="/">Go back to Dashboard</Link>.</Typography>;
+  }
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* ... (The top part with trial details remains the same) ... */}
-       <Button component={Link} to="/" sx={{ mb: 2 }}>&larr; Back to Dashboard</Button>
+      <Button component={Link} to="/" sx={{ mb: 2 }}>&larr; Back to Dashboard</Button>
       <Paper sx={{ p: 3, mb: 4 }}>
         <Typography variant="h5" gutterBottom>Trial Request Details</Typography>
         <Typography><strong>Subject:</strong> {trial.subject}</Typography>
@@ -124,7 +133,6 @@ export default function TrialDetails() {
         </Alert>
       )}
 
-      {/* --- ADD THE NEW AUTOMATION BUTTON --- */}
       {matchedTutors.length > 0 && trial.status === 'Pending' && (
         <Paper sx={{ p: 2, mb: 4, backgroundColor: '#e8f4fd' }}>
            <Typography variant="h6">Ready to Go!</Typography>
@@ -144,12 +152,14 @@ export default function TrialDetails() {
         )}
       </Box>
       
-      {/* ... (The rest of the Table code remains the same) ... */}
        <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell><TableCell>Suburb</TableCell><TableCell>Travel Time</TableCell><TableCell align="right">Actions</TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Suburb</TableCell>
+              <TableCell>Travel Time</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
