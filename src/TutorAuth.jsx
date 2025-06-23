@@ -14,7 +14,6 @@ export default function TutorAuth() {
     setLoading(true);
 
     if (isLogin) {
-      // Handle Login
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) alert(error.error_description || error.message);
     } else {
@@ -24,7 +23,8 @@ export default function TutorAuth() {
         password,
         options: {
           data: {
-            full_name: fullName // This metadata is used by our trigger
+            full_name: fullName,
+            role: 'tutor' // <-- THIS IS THE NEW, IMPORTANT LINE
           }
         }
       });
@@ -32,7 +32,7 @@ export default function TutorAuth() {
         alert(error.error_description || error.message);
       } else {
         alert('Signup successful! Please check your email to verify your account.');
-        setIsLogin(true); // Switch back to login view after successful signup
+        setIsLogin(true);
       }
     }
     setLoading(false);
