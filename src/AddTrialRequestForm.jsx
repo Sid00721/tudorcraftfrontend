@@ -1,27 +1,37 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import DateTimePicker from 'react-datetime-picker';
 
 // Import MUI components
-import { Button, TextField, CircularProgress, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { Button, TextField, CircularProgress, Select, MenuItem, InputLabel, FormControl, Box, Typography } from '@mui/material';
+
+const timezones = [
+    { value: 'Australia/Sydney', label: 'NSW/VIC/ACT/TAS (AEST)' },
+    { value: 'Australia/Brisbane', label: 'QLD (AEST)' },
+    { value: 'Australia/Adelaide', label: 'SA (ACST)' },
+    { value: 'Australia/Darwin', label: 'NT (ACST)' },
+    { value: 'Australia/Perth', label: 'WA (AWST)' },
+];
 
 export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [allSubjects, setAllSubjects] = useState([]);
   
-  // State for the form fields
   const [studentGrade, setStudentGrade] = useState('');
-  const [subject, setSubject] = useState(''); // This will now hold the selected subject name
+  const [subject, setSubject] = useState('');
   const [location, setLocation] = useState('');
-  const [preferredTime, setPreferredTime] = useState('');
+  const [lessonDateTime, setLessonDateTime] = useState(new Date());
+  const [lessonTimezone, setLessonTimezone] = useState('Australia/Sydney');
 
-  // Fetch all available subjects when the form first loads
   useEffect(() => {
     const fetchSubjects = async () => {
       const { data, error } = await supabase.from('subjects').select('name').order('name');
       if (error) {
         console.error('Error fetching subjects:', error);
       } else {
-        setAllSubjects(data);
+        // --- THIS IS THE FIX ---
+        // Ensure that even if data is null, we set state to an empty array
+        setAllSubjects(data || []);
       }
     };
     fetchSubjects();
@@ -34,15 +44,20 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
     const { error } = await supabase
       .from('trial_requests')
       .insert([
-        { student_grade: studentGrade, subject: subject, location: location, preferred_time: preferredTime },
+        { 
+          student_grade: studentGrade, 
+          subject: subject, 
+          location: location, 
+          lesson_datetime: lessonDateTime,
+          lesson_timezone: lessonTimezone
+        },
       ]);
 
     if (error) {
       alert('Error adding trial request: ' + error.message);
     } else {
-      onTrialRequestAdded(); // This is passed from Dashboard.jsx to refresh the list
+      onTrialRequestAdded();
     }
-    
     setLoading(false);
   };
 
@@ -57,7 +72,6 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
           fullWidth required sx={{ mb: 2 }} 
         />
         
-        {/* --- THIS IS THE NEW DROPDOWN --- */}
         <FormControl fullWidth required sx={{ mb: 2 }}>
           <InputLabel id="subject-select-label">Subject</InputLabel>
           <Select
@@ -81,12 +95,34 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
           onChange={(e) => setLocation(e.target.value)} 
           fullWidth required sx={{ mb: 2 }} 
         />
-        <TextField 
-          label="Preferred Date/Time" 
-          value={preferredTime} 
-          onChange={(e) => setPreferredTime(e.target.value)} 
-          fullWidth sx={{ mb: 2 }} 
-        />
+
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Box sx={{ flex: 2, '.react-datetime-picker': { width: '100%' } }}>
+                <Typography variant="caption" display="block" gutterBottom>Lesson Date & Time</Typography>
+                <DateTimePicker 
+                    onChange={setLessonDateTime} 
+                    value={lessonDateTime}
+                    disableClock={true}
+                    className="custom-datetime-picker"
+                />
+            </Box>
+            <FormControl sx={{ flex: 1 }}>
+              <InputLabel id="timezone-select-label">Timezone</InputLabel>
+              <Select
+                labelId="timezone-select-label"
+                value={lessonTimezone}
+                label="Timezone"
+                onChange={(e) => setLessonTimezone(e.target.value)}
+              >
+                {timezones.map((tz) => (
+                  <MenuItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+        </Box>
+
         <div>
           <Button className="button" type="submit" variant="contained" disabled={loading}>
             {loading ? <CircularProgress size={24} /> : 'Save Request'}
