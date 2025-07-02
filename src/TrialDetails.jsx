@@ -1,11 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { formatInTimeZone } from 'date-fns-tz';
 
 // Import MUI Components
-import { Box, Button, Typography, Paper, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert } from '@mui/material';
+import { Box, Button, Typography, Paper, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, List, ListItem, ListItemText, Chip } from '@mui/material';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+
+// Helper function to determine chip color based on log level
+const getLogChipColor = (level) => {
+  switch (level) {
+    case 'SUCCESS': return 'success';
+    case 'ERROR': return 'error';
+    default: return 'info';
+  }
+};
 
 export default function TrialDetails() {
   const { trialId } = useParams();
@@ -14,30 +24,40 @@ export default function TrialDetails() {
   const [loading, setLoading] = useState(true);
   const [trial, setTrial] = useState(null);
   const [matchedTutors, setMatchedTutors] = useState([]);
+  const [logs, setLogs] = useState([]); // <-- NEW STATE FOR LOGS
   const [isMatching, setIsMatching] = useState(false);
   const [assigningTutorId, setAssigningTutorId] = useState(null);
   const [isStartingOutreach, setIsStartingOutreach] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false); // <-- New loading state
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const fetchTrialDetails = useCallback(async () => {
+    // This function now also fetches logs
     const { data, error } = await supabase.from('trial_requests').select('*').eq('id', trialId).single();
+    
     if (error) {
       console.error('Error fetching trial details', error);
       navigate('/');
     } else {
       setTrial(data);
+      // --- NEW: FETCH LOGS FOR THIS TRIAL ---
+      const { data: logsData, error: logsError } = await supabase
+        .from('logs')
+        .select('*')
+        .eq('trial_request_id', trialId)
+        .order('created_at', { ascending: false }); // Newest logs first
+
+      if (logsError) console.error('Error fetching logs', logsError);
+      else setLogs(logsData || []);
     }
-    setLoading(false);
   }, [trialId, navigate]);
 
   useEffect(() => {
     setLoading(true);
-    fetchTrialDetails();
+    fetchTrialDetails().finally(() => setLoading(false));
   }, [fetchTrialDetails]);
 
   const handleFindMatch = async () => {
     setIsMatching(true);
-    // ... (rest of function is unchanged)
     setMatchedTutors([]);
     try {
       const response = await fetch(`${API_URL}/api/match-request`, {
@@ -57,7 +77,6 @@ export default function TrialDetails() {
   };
   
   const handleAssignTutor = async (tutorId) => {
-    // ... (this function is unchanged)
     setAssigningTutorId(tutorId);
     try {
       const response = await fetch(`${API_URL}/api/trials/${trialId}/assign`, {
@@ -77,7 +96,6 @@ export default function TrialDetails() {
   };
 
   const handleStartOutreach = async () => {
-    // ... (this function is unchanged)
     setIsStartingOutreach(true);
     try {
       const response = await fetch(`${API_URL}/api/trials/${trialId}/start-outreach`, {
@@ -94,7 +112,6 @@ export default function TrialDetails() {
     setIsStartingOutreach(false);
   };
   
-  // --- NEW FUNCTION TO HANDLE THE RETRY ---
   const handleRetryOutreach = async () => {
     setIsRetrying(true);
     try {
@@ -103,10 +120,8 @@ export default function TrialDetails() {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to retry outreach.');
-        
         alert(data.message);
-        await fetchTrialDetails(); // Refresh the page to show the new 'Pending' status and buttons
-
+        await fetchTrialDetails();
     } catch (error) {
         console.error('Error retrying outreach:', error);
         alert('Error: ' + error.message);
@@ -133,7 +148,6 @@ export default function TrialDetails() {
         </Alert>
       )}
 
-      {/* --- NEW BUTTON FOR FAILED TRIALS --- */}
       {trial.status === 'Failed - No Tutors' && (
         <Alert severity="error" action={
             <Button color="inherit" size="small" onClick={handleRetryOutreach} disabled={isRetrying}>
@@ -146,11 +160,11 @@ export default function TrialDetails() {
 
       {matchedTutors.length > 0 && trial.status === 'Pending' && (
         <Paper sx={{ p: 2, mb: 4, backgroundColor: '#e8f4fd' }}>
-           <Typography variant="h6">Ready to Go!</Typography>
-           <Typography sx={{mb: 2}}>You have a shortlist of {matchedTutors.length} tutors. You can now start the automated outreach.</Typography>
-           <Button variant="contained" color="primary" onClick={handleStartOutreach} disabled={isStartingOutreach}>
-            {isStartingOutreach ? <CircularProgress size={24} /> : 'Start Automated Outreach'}
-           </Button>
+          <Typography variant="h6">Ready to Go!</Typography>
+          <Typography sx={{mb: 2}}>You have a shortlist of {matchedTutors.length} tutors. You can now start the automated outreach.</Typography>
+          <Button variant="contained" color="primary" onClick={handleStartOutreach} disabled={isStartingOutreach}>
+           {isStartingOutreach ? <CircularProgress size={24} /> : 'Start Automated Outreach'}
+          </Button>
         </Paper>
       )}
 
@@ -163,8 +177,7 @@ export default function TrialDetails() {
         )}
       </Box>
       
-       <TableContainer component={Paper}>
-        {/* ... The matched tutors table JSX remains the same ... */}
+        <TableContainer component={Paper}>
         <Table>
           <TableHead><TableRow><TableCell>Name</TableCell><TableCell>Suburb</TableCell><TableCell>Travel Time</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
           <TableBody>
@@ -172,6 +185,26 @@ export default function TrialDetails() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* --- NEW EVENT LOG SECTION --- */}
+      <Paper sx={{ p: 2, mt: 4 }}>
+        <Typography variant="h5" gutterBottom sx={{p: 2}}>Event Log</Typography>
+        <List dense>
+          {logs.length > 0 ? logs.map(log => (
+            <ListItem key={log.id} divider>
+              <ListItemText
+                primary={log.message}
+                secondary={
+                  formatInTimeZone(new Date(log.created_at), 'Australia/Sydney', 'd MMM yyyy, h:mm:ss a')
+                }
+              />
+              <Chip label={log.level} color={getLogChipColor(log.level)} size="small" />
+            </ListItem>
+          )) : (
+            <Typography variant="body2" sx={{p: 2}}>No log entries for this trial yet.</Typography>
+          )}
+        </List>
+      </Paper>
     </Box>
   );
 }

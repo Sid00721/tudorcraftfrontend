@@ -8,13 +8,13 @@ import AddTrialRequestForm from './AddTrialRequestForm';
 import { 
     Button, CircularProgress, Box, Typography, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, Paper,
-    Dialog, DialogTitle, DialogContent, DialogActions, Chip, List, ListItem, ListItemText 
+    Dialog, DialogTitle, DialogContent, DialogActions, Chip, List, ListItem, ListItemText, Stack
 } from '@mui/material';
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [tutors, setTutors] = useState([]);
-  const [trialRequests, setTrialRequests] = useState([]);
+  const [trialSessions, setTrialSessions] = useState([]);
   const [showAddTutorForm, setShowAddTutorForm] = useState(false);
   const [showAddRequestForm, setShowAddRequestForm] = useState(false);
 
@@ -24,11 +24,17 @@ export default function Dashboard() {
   const [loadingTutorDetails, setLoadingTutorDetails] = useState(false);
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
     const { data: tutorsData } = await supabase.from('tutors').select('*').order('created_at', { ascending: false });
     setTutors(tutorsData || []);
 
-    const { data: requestsData } = await supabase.from('trial_requests').select('*').order('created_at', { ascending: false });
-    setTrialRequests(requestsData || []);
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from('trial_sessions')
+      .select('*, trial_lessons(*, subjects(name))')
+      .order('created_at', { ascending: false });
+
+    if (sessionsError) console.error("Error fetching trial sessions:", sessionsError);
+    setTrialSessions(sessionsData || []);
 
     setLoading(false);
   }, []);
@@ -105,21 +111,53 @@ export default function Dashboard() {
         </Table>
       </TableContainer>
 
-      {/* --- Trial Requests Section (No changes here) --- */}
+      {/* --- MODIFIED: Trial Sessions Section --- */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4, mb: 2 }}>
-        <Typography variant="h5">Trial Requests</Typography>
-        {!showAddRequestForm && (<Button variant="contained" onClick={() => setShowAddRequestForm(true)}>+ Add New Request</Button>)}
+        <Typography variant="h5">Trial Sessions</Typography>
+        {!showAddRequestForm && (<Button variant="contained" onClick={() => setShowAddRequestForm(true)}>+ Add New Session</Button>)}
       </Box>
       {showAddRequestForm && <AddTrialRequestForm onTrialRequestAdded={handleDataAdded} onCancel={() => setShowAddRequestForm(false)} />}
+      
       <TableContainer component={Paper}>
-        {/* ... The entire trial requests table JSX remains the same ... */}
         <Table>
-            <TableHead><TableRow><TableCell>Subject</TableCell><TableCell>Location</TableCell><TableCell>Status</TableCell><TableCell>Created At</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>
-            <TableBody>{trialRequests.map((request) => (<TableRow key={request.id}><TableCell>{request.subject}</TableCell><TableCell>{request.location}</TableCell><TableCell>{request.status}</TableCell><TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell><TableCell><Button component={Link} to={`/trial/${request.id}`} variant="outlined" size="small">View</Button></TableCell></TableRow>))}</TableBody>
+          <TableHead>
+            <TableRow>
+              <TableCell>Parent</TableCell>
+              <TableCell>Subjects</TableCell>
+              <TableCell>Location</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {trialSessions.map((session) => (
+              <TableRow key={session.id}>
+                <TableCell>{session.parent_name || 'N/A'}</TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={1}>
+                    {session.trial_lessons && session.trial_lessons.length > 0 ? (
+                      session.trial_lessons.map(lesson => (
+                        <Chip key={lesson.id} label={lesson.subjects?.name || 'Unknown Subject'} size="small" />
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="textSecondary">No lessons</Typography>
+                    )}
+                  </Stack>
+                </TableCell>
+                <TableCell>{session.location}</TableCell>
+                <TableCell>
+                  <Chip label={session.status} size="small" color={session.status === 'Confirmed' ? 'success' : 'default'} />
+                </TableCell>
+                <TableCell>
+                  <Button component={Link} to={`/session/${session.id}`} variant="outlined" size="small">View Details</Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
         </Table>
       </TableContainer>
 
-      {/* --- NEW TUTOR PROFILE MODAL --- */}
+      {/* --- Tutor Profile Modal --- */}
       <Dialog open={isModalOpen} onClose={handleCloseTutorModal} fullWidth maxWidth="sm">
         <DialogTitle>Tutor Profile</DialogTitle>
         <DialogContent>
