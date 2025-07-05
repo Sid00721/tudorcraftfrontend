@@ -11,6 +11,8 @@ import TrialDetails from './TrialDetails'; // This is the old one, we can remove
 import SessionDetails from './SessionDetails'; // --- NEW: Import the new component ---
 import TutorDashboard from './TutorDashboard';
 import TutorProfile from './TutorProfile';
+import ResourceManagement from './ResourceManagement'; // --- NEW ---
+import ResourceHub from './ResourceHub'; // --- NEW ---
 
 // This component protects Admin routes
 function ProtectedAdminRoute({ session }) {
@@ -71,6 +73,8 @@ export default function App() {
                         <Route path="/trial/:trialId" element={<TrialDetails />} />
                         {/* --- NEW: Route for the session details page --- */}
                         <Route path="/session/:sessionId" element={<SessionDetails />} />
+                        {/* --- NEW: Route for the resource management page --- */}
+                        <Route path="/admin/resources" element={<ResourceManagement />} />
                     </Route>
 
                     {/* Tutor Routes */}
@@ -78,6 +82,8 @@ export default function App() {
                     <Route element={<ProtectedTutorRoute session={session} />}>
                         <Route path="/tutor/dashboard" element={<TutorDashboard />} />
                         <Route path="/tutor/profile" element={<TutorProfile />} />
+                        {/* --- NEW: Route for the tutor resource hub --- */}
+                        <Route path="/tutor/resources" element={<ResourceHub />} />
                     </Route>
 
                 </Routes>

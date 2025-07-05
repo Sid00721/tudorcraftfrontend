@@ -79,6 +79,16 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* --- NEW: Header with navigation buttons --- */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, pb: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Typography variant="h4">Admin Dashboard</Typography>
+        <Stack direction="row" spacing={2}>
+            <Button component={Link} to="/admin/resources" variant="contained" color="secondary">
+                Manage Resources
+            </Button>
+        </Stack>
+      </Box>
+
       {/* Tutors Section */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5">Tutors</Typography>

@@ -27,6 +27,7 @@ export default function TutorDashboard() {
   // --- State for Modals ---
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,14 +154,51 @@ export default function TutorDashboard() {
     setIsSubmitting(false);
   };
 
+  // --- NEW HANDLERS for Feedback Flow ---
+  const handleOpenFeedbackModal = (session) => {
+    setSelectedItem(session);
+    setIsFeedbackModalOpen(true);
+  };
+
+  const handleCloseFeedbackModal = () => {
+    setIsFeedbackModalOpen(false);
+    setFeedbackText('');
+    setSelectedItem(null);
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!selectedItem || !feedbackText) return;
+    setIsSubmitting(true);
+    try {
+        const response = await fetch(`${API_URL}/api/sessions/${selectedItem.id}/submit-feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ feedback: feedbackText, tutorId: user.id }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to submit feedback.');
+        
+        alert('Feedback submitted successfully!');
+        await fetchAllData(user.id);
+        handleCloseFeedbackModal();
+
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+    setIsSubmitting(false);
+  };
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
   return (
     <Box sx={{ p: 3 }}>
-        {/* Header and Profile Alert (Unchanged) */}
+        {/* --- MODIFIED: Header now has a link to the Resource Hub --- */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h4" gutterBottom>Tutor Dashboard</Typography>
-            <Button component={Link} to="/tutor/profile" variant="contained">Edit My Profile</Button>
+            <Stack direction="row" spacing={2}>
+                <Button component={Link} to="/tutor/resources" variant="contained" color="secondary">Resource Hub</Button>
+                <Button component={Link} to="/tutor/profile" variant="contained">Edit My Profile</Button>
+            </Stack>
         </Box>
         {profile && (!profile.suburb || !profile.phone_number) && <Alert severity="warning" sx={{ mb: 2 }}>Your profile is incomplete...</Alert>}
 
@@ -205,19 +243,17 @@ export default function TutorDashboard() {
                     {confirmedTrials.length > 0 ? (
                         confirmedTrials.map((session) => (
                             <TableRow key={session.id}>
-                                <TableCell>
-                                    {session.trial_lessons.map(l => l.subjects.name).join(', ')}
-                                </TableCell>
+                                <TableCell>{session.trial_lessons.map(l => l.subjects.name).join(', ')}</TableCell>
                                 <TableCell>{session.location}</TableCell>
-                                <TableCell><Chip label={session.status} color="success" size="small" /></TableCell>
+                                <TableCell><Chip label={session.status} color={session.status === 'Confirmed' ? 'success' : 'default'} size="small" /></TableCell>
                                 <TableCell>
                                     {session.status === 'Confirmed' ? (
                                         <Stack direction="row" spacing={1}>
-                                            <Button variant="outlined" color="error" size="small" onClick={() => handleOpenCancelModal(session)}>Cancel Assignment</Button>
-                                            <Button variant="contained" size="small" disabled>Submit Feedback</Button>
+                                            <Button variant="outlined" color="error" size="small" onClick={() => handleOpenCancelModal(session)}>Cancel</Button>
+                                            <Button variant="contained" size="small" onClick={() => handleOpenFeedbackModal(session)}>Submit Feedback</Button>
                                         </Stack>
                                     ) : (
-                                        <Alert severity="success" variant="outlined">{session.status.replace('Completed - ', '')}</Alert>
+                                        <Alert severity="success" variant="outlined" sx={{py: 0.5}}>{session.status.replace('Completed - ', '')}</Alert>
                                     )}
                                 </TableCell>
                             </TableRow>
@@ -272,18 +308,33 @@ export default function TutorDashboard() {
         </TableContainer>
 
         {/* --- All Modals --- */}
-        <Dialog open={isConfirmModalOpen} onClose={handleCloseConfirmModal}>{/* ... */}</Dialog>
-        <Dialog open={isCancelModalOpen} onClose={handleCloseCancelModal}>
-            <DialogTitle>Cancel Assignment Confirmation</DialogTitle>
+        <Dialog open={isConfirmModalOpen} onClose={handleCloseConfirmModal}>{/* Acceptance Modal */}</Dialog>
+        <Dialog open={isCancelModalOpen} onClose={handleCloseCancelModal}>{/* Cancellation Modal */}</Dialog>
+
+        {/* --- NEW FEEDBACK MODAL --- */}
+        <Dialog open={isFeedbackModalOpen} onClose={handleCloseFeedbackModal} fullWidth maxWidth="sm">
+            <DialogTitle>Submit Lesson Feedback</DialogTitle>
             <DialogContent>
-                <DialogContentText>
-                    Are you sure you want to cancel this assignment? This will make the trial available to other tutors on the waitlist.
+                <DialogContentText sx={{mb: 2}}>
+                    Please provide brief feedback on how the trial lesson went. This will be visible to the admin team.
                 </DialogContentText>
+                <TextField
+                    autoFocus
+                    margin="dense"
+                    id="feedback"
+                    label="Lesson Feedback"
+                    type="text"
+                    fullWidth
+                    multiline
+                    rows={4}
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                />
             </DialogContent>
             <DialogActions>
-                <Button onClick={handleCloseCancelModal} disabled={isSubmitting}>Back</Button>
-                <Button onClick={handleConfirmCancel} color="error" variant="contained" disabled={isSubmitting}>
-                    {isSubmitting ? <CircularProgress size={24} /> : 'Yes, Cancel Assignment'}
+                <Button onClick={handleCloseFeedbackModal} disabled={isSubmitting}>Cancel</Button>
+                <Button onClick={handleSubmitFeedback} variant="contained" disabled={isSubmitting || !feedbackText}>
+                    {isSubmitting ? <CircularProgress size={24} /> : "Submit Feedback"}
                 </Button>
             </DialogActions>
         </Dialog>
