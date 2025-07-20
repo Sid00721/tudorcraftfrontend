@@ -86,6 +86,12 @@ export default function Dashboard() {
             <Button component={Link} to="/admin/resources" variant="contained" color="secondary">
                 Manage Resources
             </Button>
+            <Button component={Link} to="/admin/messages" variant="contained" color="info">
+                Message History
+            </Button>
+            <Button component={Link} to="/admin/cancellations" variant="contained" color="warning">
+                AI Analysis
+            </Button>
         </Stack>
       </Box>
 

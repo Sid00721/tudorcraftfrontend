@@ -7,11 +7,14 @@ import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import {
     Button, TextField, CircularProgress, Box, Typography, Accordion,
     AccordionSummary, AccordionDetails, List, ListItemButton,
-    ListItemText, Paper, Grid, Card, CardContent, IconButton
+    ListItemText, Paper, Grid, Card, CardContent, IconButton,
+    MenuItem, Select, InputLabel, FormControl, FormHelperText,
+    Autocomplete, Chip, InputAdornment
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
 
 // NOTE: The timezones data is now part of the component state for simplicity
 // but can be moved back out if preferred.
@@ -33,7 +36,17 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
     });
 
     const [lessons, setLessons] = useState([
-        { student_name: '', student_grade: '', subject_id: null, lesson_datetime: new Date(), duration_minutes: 60 }
+        { 
+            student_name: '', 
+            student_grade: '', 
+            subject_id: null, 
+            lesson_datetime: new Date(), 
+            duration_minutes: 60,
+            student_level: '', // 'catching_up', 'holding_steady', 'ready_to_excel'
+            unit_module: '', // For science subjects: NSW modules 1-8, Other states units 1-4
+            english_text: '', // For English subjects: specific text being studied
+            lesson_timezone: 'Australia/Sydney' // Add timezone to lesson level
+        }
     ]);
     
     const timezones = [
@@ -43,6 +56,146 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
         { value: "Australia/Darwin", label: "NT (ACST)" },
         { value: "Australia/Perth", label: "WA (AWST)" }
     ];
+
+    // Student level options
+    const studentLevelOptions = [
+        { value: 'catching_up', label: 'Catching Up' },
+        { value: 'holding_steady', label: 'Holding Steady' },
+        { value: 'ready_to_excel', label: 'Ready to Excel' }
+    ];
+
+    // English texts by region
+    const englishTextsByRegion = {
+        'NSW': [
+            'To Kill a Mockingbird by Harper Lee',
+            'Jasper Jones by Craig Silvey',
+            'Great Gatsby by F. Scott Fitzgerald',
+            'The Catcher in the Rye by J.D. Salinger',
+            'The Hunger Games by Suzanne Collins',
+            'Romeo and Juliet',
+            'The Crucible',
+            'A Doll\'s House by Henrik Ibsen',
+            'Of Mice and Men by John Steinbeck',
+            'Looking for Alibrandi by Melina Marchetta',
+            'The Secret River by Kate Grenville',
+            'The White Tiger by Aravind Adiga',
+            'Animal Farm by George Orwell',
+            'The Book Thief by Markus Zusak',
+            'A Streetcar Named Desire by Tennessee Williams',
+            'The Removalists by David Williamson',
+            'Macbeth by William Shakespeare',
+            'Waiting for Godot by Samuel Beckett',
+            'Death of a Salesman by Arthur Miller',
+            'Plath and Hughes',
+            'TS Eliot',
+            'Keats and Campion',
+            'The Matrix (film)',
+            'Dead Poets Society (film)',
+            'Rabbit-Proof Fence (film)',
+            'The Dressmaker (film)',
+            'Lion (film)',
+            'Paradise Lost by John Milton',
+            'Oedipus Rex by Sophocles',
+            'King Lear by William Shakespeare',
+            'Othello by William Shakespeare'
+        ],
+        'VIC': [
+            'Regeneration by Pat Barker',
+            'Jane Eyre by Charlotte Brontë',
+            'My Brilliant Career by Miles Franklin',
+            'Chronicle of a Death Foretold by Gabriel García Márquez',
+            'Orbital by Samantha Harvey',
+            'We Have Always Lived in the Castle by Shirley Jackson',
+            'Ghost Wall by Sarah Moss',
+            'The Memory Police by Yōko Ogawa',
+            'Bad Dreams and Other Stories by Tessa Hadley',
+            'The Complete Stories by David Malouf',
+            'Rainbow\'s End by Jane Harrison',
+            'Twelfth Night by William Shakespeare',
+            'Oedipus the King by Sophocles',
+            'Selected Poems by Langston Hughes',
+            'New and Selected Poems, Volume One by Mary Oliver',
+            'High Ground (film)',
+            'Sunset Boulevard (film)',
+            'Requiem for a Beast by Matt Ottley',
+            'We Come with This Place by Debra Dank',
+            'Born a Crime by Trevor Noah',
+            'Macbeth by William Shakespeare'
+        ],
+        'QLD': [
+            'To Kill a Mockingbird by Harper Lee',
+            'The Great Gatsby by F. Scott Fitzgerald',
+            'Romeo and Juliet by William Shakespeare',
+            'Macbeth by William Shakespeare',
+            'Othello by William Shakespeare',
+            'The Crucible by Arthur Miller',
+            'A Streetcar Named Desire by Tennessee Williams',
+            'Death of a Salesman by Arthur Miller',
+            'Animal Farm by George Orwell',
+            'The Book Thief by Markus Zusak',
+            'Looking for Alibrandi by Melina Marchetta'
+        ],
+        'WA': [
+            'To Kill a Mockingbird by Harper Lee',
+            'The Great Gatsby by F. Scott Fitzgerald',
+            'Romeo and Juliet by William Shakespeare',
+            'Macbeth by William Shakespeare',
+            'The Crucible by Arthur Miller',
+            'Animal Farm by George Orwell',
+            'The Book Thief by Markus Zusak'
+        ],
+        'SA': [
+            'To Kill a Mockingbird by Harper Lee',
+            'The Great Gatsby by F. Scott Fitzgerald',
+            'Romeo and Juliet by William Shakespeare',
+            'Macbeth by William Shakespeare',
+            'The Crucible by Arthur Miller',
+            'Animal Farm by George Orwell'
+        ],
+        'ACT': [
+            'To Kill a Mockingbird by Harper Lee',
+            'The Great Gatsby by F. Scott Fitzgerald',
+            'Romeo and Juliet by William Shakespeare',
+            'Macbeth by William Shakespeare',
+            'The Crucible by Arthur Miller',
+            'Animal Farm by George Orwell'
+        ]
+    };
+
+    // Helper function to determine curriculum region from subject
+    const getCurriculumRegion = (subjectName) => {
+        if (!subjectName) return null;
+        const name = subjectName.toLowerCase();
+        if (name.includes('nsw')) return 'NSW';
+        if (name.includes('vic')) return 'VIC';
+        if (name.includes('qld')) return 'QLD';
+        if (name.includes('wa')) return 'WA';
+        if (name.includes('sa')) return 'SA';
+        if (name.includes('act')) return 'ACT';
+        return null;
+    };
+
+    // Helper function to check if subject needs unit/module selection
+    const needsUnitModuleSelection = (subjectName, studentGrade) => {
+        if (!subjectName || !studentGrade) return false;
+        const name = subjectName.toLowerCase();
+        const isYear11Or12 = studentGrade.toLowerCase().includes('year 11') || 
+                            studentGrade.toLowerCase().includes('year 12') ||
+                            studentGrade === '11' || studentGrade === '12';
+        
+        return isYear11Or12 && (
+            name.includes('chemistry') || 
+            name.includes('physics') || 
+            name.includes('biology')
+        );
+    };
+
+    // Helper function to check if subject needs English text selection
+    const needsEnglishTextSelection = (subjectName) => {
+        if (!subjectName) return false;
+        const name = subjectName.toLowerCase();
+        return name.includes('english');
+    };
 
     // --- Side-Effects ---
     useEffect(() => {
@@ -94,7 +247,17 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
     const addLesson = () => {
         setLessons([
             ...lessons,
-            { student_name: '', student_grade: '', subject_id: null, lesson_datetime: new Date(), duration_minutes: 60 }
+            { 
+                student_name: '', 
+                student_grade: '', 
+                subject_id: null, 
+                lesson_datetime: new Date(), 
+                duration_minutes: 60,
+                student_level: '',
+                unit_module: '',
+                english_text: '',
+                lesson_timezone: 'Australia/Sydney'
+            }
         ]);
     };
 
@@ -145,7 +308,22 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
         }
     };
 
-    const findSubjectName = (id) => allSubjects.find(s => s.id === id)?.name || '';
+    // --- Helper Functions ---
+    const findSubjectName = (subjectId) => {
+        const subject = allSubjects.find(s => s.id === subjectId);
+        return subject ? subject.name : 'Unknown Subject';
+    };
+
+    // Group subjects by curriculum and level for better organization
+    const getSubjectsByCategory = () => {
+        const grouped = {};
+        allSubjects.forEach(subject => {
+            const category = `${subject.state_curriculum} - ${subject.level}`;
+            if (!grouped[category]) grouped[category] = [];
+            grouped[category].push(subject);
+        });
+        return grouped;
+    };
 
     // --- Render ---
     return (
@@ -195,42 +373,174 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
                                     </Box>
                                 </Grid>
                                 
+                                {/* --- IMPROVED SUBJECT SELECTION --- */}
                                 <Grid item xs={12}>
-                                    <Paper sx={{ p: 2, border: "1px solid #ddd" }}>
-                                        <Typography variant="h6">Select Subject</Typography>
-                                        <Typography color="primary" sx={{ mb: 1 }}>
-                                            Selected: <strong>{lesson.subject_id ? findSubjectName(lesson.subject_id) : 'Please select one subject'}</strong>
-                                        </Typography>
-                                        
-                                        {/* PRESERVED: Your accordion structure */}
-                                        {Object.keys(structuredSubjects).map((curriculum) => (
-                                          <Accordion key={curriculum} TransitionProps={{ unmountOnExit: true }}>
-                                            <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography variant="subtitle1" sx={{ fontWeight: 500 }}>{curriculum}</Typography></AccordionSummary>
-                                            <AccordionDetails sx={{ p: 0 }}>
-                                              {Object.keys(structuredSubjects[curriculum]).map((level) => (
-                                                <Accordion key={level} TransitionProps={{ unmountOnExit: true }}>
-                                                  <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>{level}</Typography></AccordionSummary>
-                                                  <AccordionDetails>
-                                                    {Object.keys(structuredSubjects[curriculum][level]).map((group) => (
-                                                      <Box key={group} sx={{ mb: 1 }}>
-                                                        <Typography variant="body2" sx={{ fontWeight: "bold", ml: 2 }}>{group}</Typography>
-                                                        <List dense>
-                                                          {structuredSubjects[curriculum][level][group].map((s) => (
-                                                            <ListItemButton key={s.id} onClick={() => handleLessonChange(index, 'subject_id', s.id)} selected={lesson.subject_id === s.id}>
-                                                              <ListItemText primary={s.name} />
-                                                            </ListItemButton>
-                                                          ))}
-                                                        </List>
-                                                      </Box>
-                                                    ))}
-                                                  </AccordionDetails>
-                                                </Accordion>
-                                              ))}
-                                            </AccordionDetails>
-                                          </Accordion>
-                                        ))}
-                                    </Paper>
+                                    <FormControl fullWidth required>
+                                        <Autocomplete
+                                            options={allSubjects}
+                                            groupBy={(option) => `${option.state_curriculum} - ${option.level}`}
+                                            getOptionLabel={(option) => option.name}
+                                            value={allSubjects.find(s => s.id === lesson.subject_id) || null}
+                                            onChange={(event, newValue) => {
+                                                handleLessonChange(index, 'subject_id', newValue ? newValue.id : null);
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField 
+                                                    {...params} 
+                                                    label="Subject" 
+                                                    required
+                                                    InputProps={{
+                                                        ...params.InputProps,
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <SearchIcon />
+                                                            </InputAdornment>
+                                                        ),
+                                                    }}
+                                                />
+                                            )}
+                                            renderOption={(props, option) => (
+                                                <Box component="li" {...props}>
+                                                    <Box>
+                                                        <Typography variant="body1" fontWeight="bold">
+                                                            {option.name}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {option.state_curriculum} • {option.level}
+                                                            {option.subject_group && ` • ${option.subject_group}`}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                            )}
+                                            renderGroup={(params) => (
+                                                <Box key={params.key}>
+                                                    <Typography 
+                                                        variant="subtitle2" 
+                                                        sx={{ 
+                                                            px: 2, 
+                                                            py: 1, 
+                                                            bgcolor: 'grey.100', 
+                                                            fontWeight: 'bold',
+                                                            position: 'sticky',
+                                                            top: 0,
+                                                            zIndex: 1
+                                                        }}
+                                                    >
+                                                        {params.group}
+                                                    </Typography>
+                                                    {params.children}
+                                                </Box>
+                                            )}
+                                            ListboxProps={{
+                                                style: { maxHeight: '300px' }
+                                            }}
+                                            noOptionsText="No subjects found"
+                                            placeholder="Search and select subject..."
+                                        />
+                                    </FormControl>
+                                    
+                                    {lesson.subject_id && (
+                                        <Box mt={1}>
+                                            <Chip 
+                                                label={findSubjectName(lesson.subject_id)}
+                                                color="primary"
+                                                variant="outlined"
+                                                size="small"
+                                            />
+                                        </Box>
+                                    )}
                                 </Grid>
+
+                                {/* --- NEW: Student Level (Compulsory) --- */}
+                                <Grid item xs={12} sm={6}>
+                                    <FormControl fullWidth required>
+                                        <InputLabel>Student Level</InputLabel>
+                                        <Select
+                                            value={lesson.student_level || ''}
+                                            label="Student Level"
+                                            onChange={(e) => handleLessonChange(index, 'student_level', e.target.value)}
+                                        >
+                                            {studentLevelOptions.map(option => (
+                                                <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                                            ))}
+                                        </Select>
+                                        <FormHelperText>How is the student currently performing?</FormHelperText>
+                                    </FormControl>
+                                </Grid>
+
+                                {/* --- NEW: Unit/Module Selection (Conditional) --- */}
+                                {needsUnitModuleSelection(findSubjectName(lesson.subject_id), lesson.student_grade) && (
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControl fullWidth>
+                                            <InputLabel>Unit/Module (Optional)</InputLabel>
+                                            <Select
+                                                value={lesson.unit_module || ''}
+                                                label="Unit/Module (Optional)"
+                                                onChange={(e) => handleLessonChange(index, 'unit_module', e.target.value)}
+                                            >
+                                                <MenuItem value="">Not specified</MenuItem>
+                                                {getCurriculumRegion(findSubjectName(lesson.subject_id)) === 'NSW' ? (
+                                                    // NSW: Modules 1-8
+                                                    [1,2,3,4,5,6,7,8].map(num => (
+                                                        <MenuItem key={num} value={`Module ${num}`}>Module {num}</MenuItem>
+                                                    ))
+                                                ) : (
+                                                    // Other states: Units 1-4  
+                                                    [1,2,3,4].map(num => (
+                                                        <MenuItem key={num} value={`Unit ${num}`}>Unit {num}</MenuItem>
+                                                    ))
+                                                )}
+                                            </Select>
+                                            <FormHelperText>
+                                                {getCurriculumRegion(findSubjectName(lesson.subject_id)) === 'NSW' 
+                                                    ? 'NSW: Modules 1-4 (Yr 11), 5-8 (Yr 12)'
+                                                    : 'Units 1-2 (Yr 11), 3-4 (Yr 12)'
+                                                }
+                                            </FormHelperText>
+                                        </FormControl>
+                                    </Grid>
+                                )}
+
+                                {/* --- NEW: English Text Selection (Conditional) --- */}
+                                {needsEnglishTextSelection(findSubjectName(lesson.subject_id)) && (
+                                    <Grid item xs={12}>
+                                        <FormControl fullWidth>
+                                            <InputLabel>English Text (Optional)</InputLabel>
+                                            <Select
+                                                value={lesson.english_text || ''}
+                                                label="English Text (Optional)"
+                                                onChange={(e) => handleLessonChange(index, 'english_text', e.target.value)}
+                                            >
+                                                <MenuItem value="">Not specified / Any text</MenuItem>
+                                                {(() => {
+                                                    const region = getCurriculumRegion(findSubjectName(lesson.subject_id)) || 'NSW';
+                                                    const texts = englishTextsByRegion[region] || englishTextsByRegion['NSW'];
+                                                    return texts.map(text => (
+                                                        <MenuItem key={text} value={text}>{text}</MenuItem>
+                                                    ));
+                                                })()}
+                                            </Select>
+                                            <FormHelperText>Select the specific text the student is studying</FormHelperText>
+                                        </FormControl>
+                                    </Grid>
+                                )}
+
+                                {/* --- NEW: Timezone Selection --- */}
+                                <Grid item xs={12} sm={6}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>Timezone</InputLabel>
+                                        <Select
+                                            value={lesson.lesson_timezone || 'Australia/Sydney'}
+                                            label="Timezone"
+                                            onChange={(e) => handleLessonChange(index, 'lesson_timezone', e.target.value)}
+                                        >
+                                            {timezones.map(tz => (
+                                                <MenuItem key={tz.value} value={tz.value}>{tz.label}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+
                             </Grid>
                         </CardContent>
                     </Card>
@@ -240,7 +550,7 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
 
                 <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                     <Button type="button" onClick={onCancel} disabled={loading}>Cancel</Button>
-                    <Button type="submit" variant="contained" size="large" disabled={loading || lessons.some(l => !l.subject_id)}>
+                    <Button type="submit" variant="contained" size="large" disabled={loading || lessons.some(l => !l.subject_id || !l.student_level)}>
                         {loading ? <CircularProgress size={24} /> : 'Save Session'}
                     </Button>
                 </Box>

@@ -7,10 +7,14 @@ import { format } from 'date-fns';
 import { 
     Box, Button, TextField, Typography, Paper, CircularProgress, FormGroup, 
     FormControlLabel, Checkbox, Accordion, AccordionSummary, AccordionDetails, Divider,
-    List, ListItem, ListItemText, IconButton
+    List, ListItem, ListItemText, IconButton, FormControl, FormHelperText, Chip,
+    Grid, InputAdornment, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import SchoolIcon from '@mui/icons-material/School';
 import Alert from '@mui/material/Alert';
 
 export default function TutorProfile() {
@@ -18,37 +22,44 @@ export default function TutorProfile() {
     const [saving, setSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState({ suburb: '', phone_number: '' });
-    const [structuredSubjects, setStructuredSubjects] = useState({});
-    const [selectedSubjects, setSelectedSubjects] = useState(new Set());
+    const [profile, setProfile] = useState({ 
+        suburb: '', 
+        phone_number: '', 
+        accepts_short_face_to_face_trials: false 
+    });
     
-    // --- NEW STATE for Availability ---
+    // --- IMPROVED Subject Management State ---
+    const [allSubjects, setAllSubjects] = useState([]);
+    const [selectedSubjects, setSelectedSubjects] = useState(new Set());
+    const [subjectSearchTerm, setSubjectSearchTerm] = useState('');
+    const [selectedCurriculum, setSelectedCurriculum] = useState('All');
+    const [selectedLevel, setSelectedLevel] = useState('All');
+    const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+    
+    // --- Availability State (unchanged) ---
     const [unavailability, setUnavailability] = useState([]);
     const [newBlockout, setNewBlockout] = useState({ start_time: new Date(), end_time: new Date() });
     const [isSavingBlockout, setIsSavingBlockout] = useState(false);
 
     const fetchData = useCallback(async (userId) => {
-        // Fetch profile and subjects (unchanged)
+        // Fetch profile and selected subjects
         const { data: profileData } = await supabase.from('tutors').select('*, subjects(id)').eq('id', userId).single();
         if (profileData) {
             setProfile(profileData);
             setSelectedSubjects(new Set(profileData.subjects.map(s => s.id)));
         }
-        // Fetch all available subjects (unchanged)
-        const { data: allSubjectsData } = await supabase.from('subjects').select('*').order('name');
+        
+        // Fetch all subjects (flattened structure for better UX)
+        const { data: allSubjectsData } = await supabase
+            .from('subjects')
+            .select('*')
+            .order('state_curriculum, level, name');
+            
         if (allSubjectsData) {
-            const organized = allSubjectsData.reduce((acc, subject) => {
-                const { state_curriculum, level, subject_group, id, name } = subject;
-                if (!acc[state_curriculum]) acc[state_curriculum] = {};
-                if (!acc[state_curriculum][level]) acc[state_curriculum][level] = {};
-                const group = subject_group || 'General Subjects';
-                if (!acc[state_curriculum][level][group]) acc[state_curriculum][level][group] = [];
-                acc[state_curriculum][level][group].push({ id, name });
-                return acc;
-            }, {});
-            setStructuredSubjects(organized);
+            setAllSubjects(allSubjectsData);
         }
-        // --- NEW: Fetch unavailability blocks ---
+        
+        // Fetch unavailability blocks
         const { data: unavailabilityData, error: unavailabilityError } = await supabase
             .from('tutor_unavailability')
             .select('*')
@@ -56,6 +67,7 @@ export default function TutorProfile() {
             .order('start_time', { ascending: true });
         if (unavailabilityError) console.error("Error fetching unavailability:", unavailabilityError);
         else setUnavailability(unavailabilityData || []);
+        
         setLoading(false);
     }, []);
 
@@ -72,18 +84,51 @@ export default function TutorProfile() {
         getSession();
     }, [fetchData]);
 
-    const handleSubjectChange = (subjectId) => {
+    // --- IMPROVED Subject Management Functions ---
+    const handleSubjectToggle = (subjectId) => {
         const newSelection = new Set(selectedSubjects);
-        if (newSelection.has(subjectId)) newSelection.delete(subjectId);
-        else newSelection.add(subjectId);
+        if (newSelection.has(subjectId)) {
+            newSelection.delete(subjectId);
+        } else {
+            newSelection.add(subjectId);
+        }
         setSelectedSubjects(newSelection);
+    };
+
+    const getFilteredSubjects = () => {
+        return allSubjects.filter(subject => {
+            const matchesSearch = subject.name.toLowerCase().includes(subjectSearchTerm.toLowerCase()) ||
+                                subject.state_curriculum.toLowerCase().includes(subjectSearchTerm.toLowerCase()) ||
+                                subject.level.toLowerCase().includes(subjectSearchTerm.toLowerCase());
+            const matchesCurriculum = selectedCurriculum === 'All' || subject.state_curriculum === selectedCurriculum;
+            const matchesLevel = selectedLevel === 'All' || subject.level === selectedLevel;
+            
+            return matchesSearch && matchesCurriculum && matchesLevel;
+        });
+    };
+
+    const getUniqueOptions = (field) => {
+        const unique = [...new Set(allSubjects.map(s => s[field]))];
+        return unique.sort();
+    };
+
+    const getSelectedSubjectNames = () => {
+        return allSubjects.filter(s => selectedSubjects.has(s.id)).map(s => s.name);
     };
 
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
         setSaving(true);
         setSuccessMessage('');
-        await supabase.from('tutors').update({ suburb: profile.suburb, phone_number: profile.phone_number }).eq('id', user.id);
+        
+        // Update profile including the new short trial preference
+        await supabase.from('tutors').update({ 
+            suburb: profile.suburb, 
+            phone_number: profile.phone_number,
+            accepts_short_face_to_face_trials: profile.accepts_short_face_to_face_trials
+        }).eq('id', user.id);
+        
+        // Update subjects
         await supabase.from('tutor_subjects').delete().eq('tutor_id', user.id);
         const newSubjectLinks = Array.from(selectedSubjects).map(subjectId => ({ tutor_id: user.id, subject_id: subjectId }));
         if (newSubjectLinks.length > 0) {
@@ -130,45 +175,176 @@ export default function TutorProfile() {
                 <Paper sx={{ p: 3, mb: 3 }}>
                     <Typography variant="h6" gutterBottom>Contact Information</Typography>
                     <TextField label="Email" value={user?.email || ''} fullWidth disabled sx={{ mb: 2 }} />
-                    <TextField label="Suburb" value={profile.suburb || ''} onChange={(e) => setProfile({ ...profile, suburb: e.target.value })} fullWidth required sx={{ mb: 2 }} />
-                    <TextField label="Phone Number" value={profile.phone_number || ''} onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })} fullWidth required sx={{ mb: 2 }} />
+                    <TextField 
+                        label="Suburb" 
+                        value={profile.suburb || ''} 
+                        onChange={(e) => setProfile({ ...profile, suburb: e.target.value })} 
+                        fullWidth 
+                        required 
+                        sx={{ mb: 2 }} 
+                    />
+                    <TextField 
+                        label="Phone Number" 
+                        value={profile.phone_number || ''} 
+                        onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })} 
+                        fullWidth 
+                        required 
+                        sx={{ mb: 2 }} 
+                    />
+                    
+                    <FormControl sx={{ mb: 2 }}>
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={profile.accepts_short_face_to_face_trials || false}
+                                    onChange={(e) => setProfile({ ...profile, accepts_short_face_to_face_trials: e.target.checked })}
+                                />
+                            }
+                            label="I accept short face-to-face trials (less than 1 hour)"
+                        />
+                        <FormHelperText>
+                            Enable this if you're willing to conduct face-to-face tutoring sessions that are shorter than the standard 1 hour duration.
+                        </FormHelperText>
+                    </FormControl>
                 </Paper>
 
-                <Paper sx={{ p: 3 }}>
-                    <Typography variant="h6" gutterBottom>Teaching Subjects</Typography>
-                    {Object.keys(structuredSubjects).map(curriculum => (
-                        <Accordion key={curriculum} defaultExpanded>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography variant="h6">{curriculum}</Typography>
-                            </AccordionSummary>
-                            <AccordionDetails>
-                                {Object.keys(structuredSubjects[curriculum]).map(level => (
-                                    <Accordion key={level}>
-                                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                            <Typography variant="subtitle1">{level}</Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails>
-                                            {Object.keys(structuredSubjects[curriculum][level]).map(group => (
-                                                <Box key={group} sx={{ mb: 2 }}>
-                                                    <Typography variant="body1" sx={{fontWeight: 'bold'}}>{group}</Typography>
-                                                    <FormGroup>
-                                                        {structuredSubjects[curriculum][level][group].map(subject => (
-                                                            <FormControlLabel
-                                                                key={subject.id}
-                                                                control={<Checkbox checked={selectedSubjects.has(subject.id)} onChange={() => handleSubjectChange(subject.id)} />}
-                                                                label={subject.name}
-                                                            />
-                                                        ))}
-                                                    </FormGroup>
-                                                </Box>
-                                            ))}
-                                        </AccordionDetails>
-                                    </Accordion>
+                {/* --- COMPLETELY REDESIGNED SUBJECT SELECTION --- */}
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Typography variant="h6">Teaching Subjects</Typography>
+                        <Button 
+                            variant="outlined" 
+                            startIcon={<SchoolIcon />} 
+                            onClick={() => setIsSubjectModalOpen(true)}
+                        >
+                            Manage Subjects ({selectedSubjects.size})
+                        </Button>
+                    </Box>
+                    
+                    {selectedSubjects.size === 0 ? (
+                        <Alert severity="warning">
+                            No subjects selected. Click "Manage Subjects" to choose your teaching subjects.
+                        </Alert>
+                    ) : (
+                        <Box>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                Selected Subjects ({selectedSubjects.size}):
+                            </Typography>
+                            <Box display="flex" flexWrap="wrap" gap={1}>
+                                {getSelectedSubjectNames().map(name => (
+                                    <Chip 
+                                        key={name} 
+                                        label={name} 
+                                        color="primary" 
+                                        variant="outlined"
+                                        icon={<CheckCircleIcon />}
+                                        size="small"
+                                    />
                                 ))}
-                            </AccordionDetails>
-                        </Accordion>
-                    ))}
+                            </Box>
+                        </Box>
+                    )}
                 </Paper>
+
+                {/* Subject Selection Modal */}
+                <Dialog 
+                    open={isSubjectModalOpen} 
+                    onClose={() => setIsSubjectModalOpen(false)} 
+                    maxWidth="md" 
+                    fullWidth
+                >
+                    <DialogTitle>
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <SchoolIcon />
+                            Select Your Teaching Subjects
+                        </Box>
+                    </DialogTitle>
+                    <DialogContent>
+                        {/* Search and Filter Controls */}
+                        <Grid container spacing={2} sx={{ mb: 3 }}>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    placeholder="Search subjects..."
+                                    value={subjectSearchTerm}
+                                    onChange={(e) => setSubjectSearchTerm(e.target.value)}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SearchIcon />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={3}>
+                                <Autocomplete
+                                    options={['All', ...getUniqueOptions('state_curriculum')]}
+                                    value={selectedCurriculum}
+                                    onChange={(event, newValue) => setSelectedCurriculum(newValue)}
+                                    renderInput={(params) => <TextField {...params} label="Curriculum" />}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={3}>
+                                <Autocomplete
+                                    options={['All', ...getUniqueOptions('level')]}
+                                    value={selectedLevel}
+                                    onChange={(event, newValue) => setSelectedLevel(newValue)}
+                                    renderInput={(params) => <TextField {...params} label="Level" />}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        {/* Subject Selection List */}
+                        <Box sx={{ maxHeight: 400, overflow: 'auto', border: 1, borderColor: 'divider', borderRadius: 1 }}>
+                            {getFilteredSubjects().length === 0 ? (
+                                <Box p={3} textAlign="center">
+                                    <Typography color="text.secondary">
+                                        No subjects found matching your criteria.
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                <List>
+                                    {getFilteredSubjects().map((subject) => (
+                                        <ListItem key={subject.id} divider>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={selectedSubjects.has(subject.id)}
+                                                        onChange={() => handleSubjectToggle(subject.id)}
+                                                    />
+                                                }
+                                                label={
+                                                    <Box>
+                                                        <Typography variant="body1" fontWeight="bold">
+                                                            {subject.name}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {subject.state_curriculum} • {subject.level}
+                                                            {subject.subject_group && ` • ${subject.subject_group}`}
+                                                        </Typography>
+                                                    </Box>
+                                                }
+                                                sx={{ margin: 0, width: '100%' }}
+                                            />
+                                        </ListItem>
+                                    ))}
+                                </List>
+                            )}
+                        </Box>
+
+                        <Box mt={2} p={2} bgcolor="grey.50" borderRadius={1}>
+                            <Typography variant="body2" color="primary" fontWeight="bold">
+                                Selected: {selectedSubjects.size} subjects
+                            </Typography>
+                        </Box>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsSubjectModalOpen(false)}>
+                            Done ({selectedSubjects.size} selected)
+                        </Button>
+                    </DialogActions>
+                </Dialog>
 
                 {/* --- NEW My Availability SECTION --- */}
                 <Paper sx={{ p: 3, mb: 3 }}>

@@ -13,6 +13,8 @@ import TutorDashboard from './TutorDashboard';
 import TutorProfile from './TutorProfile';
 import ResourceManagement from './ResourceManagement'; // --- NEW ---
 import ResourceHub from './ResourceHub'; // --- NEW ---
+import MessageHistory from './MessageHistory'; // --- NEW: Message History ---
+import CancellationAnalysis from './CancellationAnalysis'; // --- NEW: AI Cancellation Analysis ---
 
 // This component protects Admin routes
 function ProtectedAdminRoute({ session }) {
@@ -75,6 +77,10 @@ export default function App() {
                         <Route path="/session/:sessionId" element={<SessionDetails />} />
                         {/* --- NEW: Route for the resource management page --- */}
                         <Route path="/admin/resources" element={<ResourceManagement />} />
+                        {/* --- NEW: Route for the message history page --- */}
+                        <Route path="/admin/messages" element={<MessageHistory />} />
+                        {/* --- NEW: Route for the AI cancellation analysis page --- */}
+                        <Route path="/admin/cancellations" element={<CancellationAnalysis />} />
                     </Route>
 
                     {/* Tutor Routes */}
