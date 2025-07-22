@@ -258,7 +258,7 @@ export default function MessageHistory() {
                             </Grid>
                         </Grid>
                     </CardContent>
-                </Paper>
+                </Card>
             )}
 
             {/* Filters */}
