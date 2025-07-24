@@ -86,6 +86,8 @@ export default function TutorDashboard() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [confirmedTrials, setConfirmedTrials] = useState([]);
   const [respondingId, setRespondingId] = useState(null);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
   
   // --- NEW STATE for Waitlist feature ---
   const [joinableSessions, setJoinableSessions] = useState([]);
@@ -591,9 +593,6 @@ export default function TutorDashboard() {
     }
     setIsSubmitting(false);
   };
-
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
 
   // Enhanced response handlers with better feedback
   const handleRespondToRequest = async (attemptId, response) => {
