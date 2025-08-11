@@ -250,7 +250,7 @@ export default function Dashboard() {
 
                     {/* Stats Cards */}
                     <Grid container spacing={3} sx={{ mb: 4 }}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Zoom in={true} timeout={400}>
                                 <div>
                                     <StatsCard
@@ -263,7 +263,7 @@ export default function Dashboard() {
                                 </div>
                             </Zoom>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Zoom in={true} timeout={500}>
                                 <div>
                                     <StatsCard
@@ -276,7 +276,7 @@ export default function Dashboard() {
                                 </div>
                             </Zoom>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Zoom in={true} timeout={600}>
                                 <div>
                                     <StatsCard
@@ -288,7 +288,7 @@ export default function Dashboard() {
                                 </div>
                             </Zoom>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Zoom in={true} timeout={700}>
                                 <div>
                                     <StatsCard
@@ -522,7 +522,7 @@ export default function Dashboard() {
                                 </Box>
                             ) : selectedTutor ? (
                                 <Grid container spacing={3}>
-                                    <Grid item xs={12} md={4}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
                                             <Avatar
                                                 sx={{
@@ -541,7 +541,7 @@ export default function Dashboard() {
                                             </Typography>
                                         </Box>
                                     </Grid>
-                                    <Grid item xs={12} md={8}>
+                                    <Grid size={{ xs: 12, md: 8 }}>
                                         <Card sx={{ p: 2, background: 'rgba(255, 255, 255, 0.7)', borderRadius: 3 }}>
                                             <List dense>
                                                 <ListItem>

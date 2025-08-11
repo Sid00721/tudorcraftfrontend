@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import DateTimePicker from 'react-datetime-picker';
 import { format } from 'date-fns';
+import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
 
 // Import MUI Components
 import { 
@@ -175,13 +176,16 @@ export default function TutorProfile() {
                 <Paper sx={{ p: 3, mb: 3 }}>
                     <Typography variant="h6" gutterBottom>Contact Information</Typography>
                     <TextField label="Email" value={user?.email || ''} fullWidth disabled sx={{ mb: 2 }} />
-                    <TextField 
-                        label="Suburb" 
-                        value={profile.suburb || ''} 
-                        onChange={(e) => setProfile({ ...profile, suburb: e.target.value })} 
-                        fullWidth 
-                        required 
-                        sx={{ mb: 2 }} 
+                    <GooglePlacesAutocomplete
+                        value={profile.suburb}
+                        onChange={(address) => setProfile({ ...profile, suburb: address })}
+                        label="Suburb"
+                        placeholder="Start typing your suburb or area..."
+                        required
+                        helperText="Enter your suburb or area to help match you with nearby students"
+                        types={['(cities)']}
+                        componentRestrictions={{ country: 'AU' }}
+                        sx={{ mb: 2 }}
                     />
                     <TextField 
                         label="Phone Number" 

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import DateTimePicker from "react-datetime-picker";
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
 
 // --- MUI Components ---
 import {
@@ -332,10 +333,21 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
             <form onSubmit={handleSubmit}>
                 <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>Parent & Session Details</Typography>
                 <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}><TextField name="parent_name" label="Parent Name" value={sessionDetails.parent_name} onChange={handleSessionChange} fullWidth required /></Grid>
-                    <Grid item xs={12} sm={6}><TextField name="parent_email" label="Parent Email" type="email" value={sessionDetails.parent_email} onChange={handleSessionChange} fullWidth /></Grid>
-                    <Grid item xs={12} sm={6}><TextField name="parent_phone" label="Parent Phone" value={sessionDetails.parent_phone} onChange={handleSessionChange} fullWidth /></Grid>
-                    <Grid item xs={12} sm={6}><TextField name="location" label="Location (Address or 'Online')" value={sessionDetails.location} onChange={handleSessionChange} fullWidth required /></Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}><TextField name="parent_name" label="Parent Name" value={sessionDetails.parent_name} onChange={handleSessionChange} fullWidth required /></Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}><TextField name="parent_email" label="Parent Email" type="email" value={sessionDetails.parent_email} onChange={handleSessionChange} fullWidth /></Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}><TextField name="parent_phone" label="Parent Phone" value={sessionDetails.parent_phone} onChange={handleSessionChange} fullWidth /></Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <GooglePlacesAutocomplete
+                            value={sessionDetails.location}
+                            onChange={(address) => setSessionDetails({...sessionDetails, location: address})}
+                            label="Location"
+                            placeholder="Start typing an address or enter 'Online'..."
+                            required
+                            helperText="Enter a full address for in-person sessions, or type 'Online' for virtual sessions"
+                            types={['address']}
+                            componentRestrictions={{ country: 'AU' }}
+                        />
+                    </Grid>
                 </Grid>
 
                 <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Lessons</Typography>
@@ -350,13 +362,13 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
                             </Box>
                             
                             <Grid container spacing={2} sx={{ mt: 0 }}>
-                                <Grid item xs={12} sm={6} md={4}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                     <TextField name="student_name" label="Student Name" value={lesson.student_name || ''} onChange={(e) => handleLessonChange(index, 'student_name', e.target.value)} fullWidth required />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={4}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                     <TextField name="student_grade" label="Student Grade" value={lesson.student_grade} onChange={(e) => handleLessonChange(index, 'student_grade', e.target.value)} fullWidth required />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={4}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                     <TextField 
                                         name="duration_minutes"
                                         label="Duration (mins)"
@@ -367,14 +379,14 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
                                         required
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6}>
+                                <Grid size={{ xs: 12, sm: 6 }}>
                                     <Box sx={{pt:1}}>
                                         <DateTimePicker onChange={(val) => handleLessonChange(index, 'lesson_datetime', val)} value={lesson.lesson_datetime} disableClock />
                                     </Box>
                                 </Grid>
                                 
                                 {/* --- IMPROVED SUBJECT SELECTION --- */}
-                                <Grid item xs={12}>
+                                <Grid size={{ xs: 12 }}>
                                     <FormControl fullWidth required>
                                         <Autocomplete
                                             options={allSubjects}
@@ -452,7 +464,7 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
                                 </Grid>
 
                                 {/* --- NEW: Student Level (Compulsory) --- */}
-                                <Grid item xs={12} sm={6}>
+                                <Grid size={{ xs: 12, sm: 6 }}>
                                     <FormControl fullWidth required>
                                         <InputLabel>Student Level</InputLabel>
                                         <Select
@@ -470,7 +482,7 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
 
                                 {/* --- NEW: Unit/Module Selection (Conditional) --- */}
                                 {needsUnitModuleSelection(findSubjectName(lesson.subject_id), lesson.student_grade) && (
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
                                         <FormControl fullWidth>
                                             <InputLabel>Unit/Module (Optional)</InputLabel>
                                             <Select
@@ -503,7 +515,7 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
 
                                 {/* --- NEW: English Text Selection (Conditional) --- */}
                                 {needsEnglishTextSelection(findSubjectName(lesson.subject_id)) && (
-                                    <Grid item xs={12}>
+                                    <Grid size={{ xs: 12 }}>
                                         <FormControl fullWidth>
                                             <InputLabel>English Text (Optional)</InputLabel>
                                             <Select
@@ -526,7 +538,7 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
                                 )}
 
                                 {/* --- NEW: Timezone Selection --- */}
-                                <Grid item xs={12} sm={6}>
+                                <Grid size={{ xs: 12, sm: 6 }}>
                                     <FormControl fullWidth>
                                         <InputLabel>Timezone</InputLabel>
                                         <Select

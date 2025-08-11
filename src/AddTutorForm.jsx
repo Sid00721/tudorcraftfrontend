@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { supabase } from './supabaseClient';
+import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
+import { 
+  Box, Button, TextField, Typography, Paper, Grid 
+} from '@mui/material';
 
 export default function AddTutorForm({ onTutorAdded, onCancel }) {
   const [loading, setLoading] = useState(false);
@@ -29,34 +33,74 @@ export default function AddTutorForm({ onTutorAdded, onCancel }) {
   };
 
   return (
-    <div className="form-widget">
-      <h3>Add New Tutor</h3>
+    <Paper sx={{ p: 4, maxWidth: 600, margin: 'auto', mt: 4 }}>
+      <Typography variant="h4" gutterBottom>Add New Tutor</Typography>
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="fullName">Full Name</label>
-          <input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        </div>
-        <div>
-          <label htmlFor="email">Email</label>
-          <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div>
-          <label htmlFor="phone">Phone Number</label>
-          <input id="phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-        </div>
-        <div>
-          <label htmlFor="suburb">Suburb</label>
-          <input id="suburb" type="text" value={suburb} onChange={(e) => setSuburb(e.target.value)} />
-        </div>
-        <div>
-          <button className="button" type="submit" disabled={loading}>
-            {loading ? 'Saving...' : 'Save Tutor'}
-          </button>
-          <button type="button" className="button button-secondary" onClick={onCancel} disabled={loading}>
-            Cancel
-          </button>
-        </div>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <TextField 
+              label="Full Name"
+              value={fullName} 
+              onChange={(e) => setFullName(e.target.value)} 
+              fullWidth 
+              required 
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <TextField 
+              label="Email"
+              type="email"
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              fullWidth 
+              required 
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <TextField 
+              label="Phone Number"
+              value={phone} 
+              onChange={(e) => setPhone(e.target.value)} 
+              fullWidth 
+              required 
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <GooglePlacesAutocomplete
+              value={suburb}
+              onChange={(address) => setSuburb(address)}
+              label="Suburb"
+              placeholder="Start typing the tutor's suburb or area..."
+              helperText="Enter the suburb or area where the tutor is located"
+              types={['(cities)']}
+              componentRestrictions={{ country: 'AU' }}
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+              <Button 
+                type="button" 
+                onClick={onCancel} 
+                disabled={loading}
+                variant="outlined"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                variant="contained"
+              >
+                {loading ? 'Saving...' : 'Save Tutor'}
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
       </form>
-    </div>
+    </Paper>
   );
 }
