@@ -9,13 +9,16 @@ import {
     Box, Button, TextField, Typography, Paper, CircularProgress, FormGroup, 
     FormControlLabel, Checkbox, Accordion, AccordionSummary, AccordionDetails, Divider,
     List, ListItem, ListItemText, IconButton, FormControl, FormHelperText, Chip,
-    Grid, InputAdornment, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions
+    Grid, InputAdornment, Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions,
+    Avatar, Card, CardContent, MenuItem, Select, InputLabel
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SchoolIcon from '@mui/icons-material/School';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import PersonIcon from '@mui/icons-material/Person';
 import Alert from '@mui/material/Alert';
 
 export default function TutorProfile() {
@@ -26,8 +29,18 @@ export default function TutorProfile() {
     const [profile, setProfile] = useState({ 
         suburb: '', 
         phone_number: '', 
-        accepts_short_face_to_face_trials: false 
+        accepts_short_face_to_face_trials: false,
+        profile_photo_url: '',
+        teaching_bio: '',
+        university: '',
+        degree: '',
+        study_year: '',
+        atar: ''
     });
+    
+    // Photo upload state
+    const [photoUploading, setPhotoUploading] = useState(false);
+    const [photoPreview, setPhotoPreview] = useState(null);
     
     // --- IMPROVED Subject Management State ---
     const [allSubjects, setAllSubjects] = useState([]);
@@ -48,6 +61,10 @@ export default function TutorProfile() {
         if (profileData) {
             setProfile(profileData);
             setSelectedSubjects(new Set(profileData.subjects.map(s => s.id)));
+            // Set photo preview if profile photo exists
+            if (profileData.profile_photo_url) {
+                setPhotoPreview(profileData.profile_photo_url);
+            }
         }
         
         // Fetch all subjects (flattened structure for better UX)
@@ -117,16 +134,137 @@ export default function TutorProfile() {
         return allSubjects.filter(s => selectedSubjects.has(s.id)).map(s => s.name);
     };
 
+    // Photo upload handler
+    const handlePhotoUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Please select an image smaller than 5MB.');
+            return;
+        }
+
+        setPhotoUploading(true);
+
+        try {
+            // Create unique filename
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+            // Upload to Supabase Storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('tutor-photos')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: urlData } = supabase.storage
+                .from('tutor-photos')
+                .getPublicUrl(fileName);
+
+            const photoUrl = urlData.publicUrl;
+
+            // Update profile with photo URL
+            const { error: updateError } = await supabase
+                .from('tutors')
+                .update({ profile_photo_url: photoUrl })
+                .eq('id', user.id);
+
+            if (updateError) throw updateError;
+
+            setProfile(prev => ({ ...prev, profile_photo_url: photoUrl }));
+            setPhotoPreview(photoUrl);
+            setSuccessMessage('Profile photo updated successfully!');
+
+        } catch (error) {
+            console.error('Error uploading photo:', error);
+            alert('Error uploading photo: ' + error.message);
+        } finally {
+            setPhotoUploading(false);
+        }
+    };
+
+    // Word count helper for bio
+    const getWordCount = (text) => {
+        return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+    };
+
+    // Australian universities list
+    const australianUniversities = [
+        'Australian National University',
+        'University of Sydney',
+        'University of Melbourne',
+        'University of Queensland',
+        'University of New South Wales',
+        'Monash University',
+        'University of Western Australia',
+        'University of Adelaide',
+        'University of Technology Sydney',
+        'Queensland University of Technology',
+        'RMIT University',
+        'Curtin University',
+        'Deakin University',
+        'Griffith University',
+        'La Trobe University',
+        'Macquarie University',
+        'University of South Australia',
+        'University of Tasmania',
+        'University of Wollongong',
+        'Western Sydney University',
+        'Flinders University',
+        'James Cook University',
+        'Murdoch University',
+        'University of Canberra',
+        'University of Newcastle',
+        'Bond University',
+        'Edith Cowan University',
+        'Southern Cross University',
+        'Swinburne University of Technology',
+        'Victoria University',
+        'Other'
+    ];
+
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
         setSaving(true);
         setSuccessMessage('');
         
-        // Update profile including the new short trial preference
+        // Validate bio word count
+        const bioWordCount = getWordCount(profile.teaching_bio);
+        if (profile.teaching_bio && bioWordCount > 50) {
+            alert('Teaching bio must be 50 words or less. Current count: ' + bioWordCount);
+            setSaving(false);
+            return;
+        }
+
+        // Validate ATAR if provided
+        if (profile.atar && (profile.atar < 0 || profile.atar > 99.95)) {
+            alert('ATAR must be between 0 and 99.95');
+            setSaving(false);
+            return;
+        }
+        
+        // Update profile including all new fields
         await supabase.from('tutors').update({ 
             suburb: profile.suburb, 
             phone_number: profile.phone_number,
-            accepts_short_face_to_face_trials: profile.accepts_short_face_to_face_trials
+            accepts_short_face_to_face_trials: profile.accepts_short_face_to_face_trials,
+            teaching_bio: profile.teaching_bio,
+            university: profile.university,
+            degree: profile.degree,
+            study_year: profile.study_year,
+            atar: profile.atar ? parseFloat(profile.atar) : null
         }).eq('id', user.id);
         
         // Update subjects
@@ -210,6 +348,136 @@ export default function TutorProfile() {
                             Enable this if you're willing to conduct face-to-face tutoring sessions that are shorter than the standard 1 hour duration.
                         </FormHelperText>
                     </FormControl>
+                </Paper>
+
+                {/* Profile Information Section */}
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" gutterBottom>Profile Information</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        This information will be shared with parents when you accept a trial session.
+                    </Typography>
+                    
+                    {/* Profile Photo */}
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" gutterBottom>Profile Photo</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Avatar
+                                src={photoPreview}
+                                sx={{ 
+                                    width: 100, 
+                                    height: 100,
+                                    border: '3px solid',
+                                    borderColor: 'primary.main'
+                                }}
+                            >
+                                <PersonIcon sx={{ fontSize: 40 }} />
+                            </Avatar>
+                            <Box>
+                                <input
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    id="photo-upload"
+                                    type="file"
+                                    onChange={handlePhotoUpload}
+                                />
+                                <label htmlFor="photo-upload">
+                                    <Button
+                                        variant="outlined"
+                                        component="span"
+                                        startIcon={photoUploading ? <CircularProgress size={20} /> : <PhotoCameraIcon />}
+                                        disabled={photoUploading}
+                                    >
+                                        {photoUploading ? 'Uploading...' : 'Upload Photo'}
+                                    </Button>
+                                </label>
+                                <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                                    Max 5MB. JPG, PNG, or GIF format.
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </Box>
+
+                    {/* Teaching Bio */}
+                    <Box sx={{ mb: 3 }}>
+                        <TextField
+                            label="Why I Teach (Bio)"
+                            multiline
+                            rows={3}
+                            fullWidth
+                            value={profile.teaching_bio || ''}
+                            onChange={(e) => setProfile({ ...profile, teaching_bio: e.target.value })}
+                            placeholder="Share why you love teaching and what motivates you to help students succeed..."
+                            helperText={`${getWordCount(profile.teaching_bio || '')} / 50 words maximum`}
+                            error={getWordCount(profile.teaching_bio || '') > 50}
+                        />
+                    </Box>
+
+                    {/* Education Information */}
+                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, mb: 2 }}>
+                        Education Background
+                    </Typography>
+                    
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>University</InputLabel>
+                                <Select
+                                    value={profile.university || ''}
+                                    label="University"
+                                    onChange={(e) => setProfile({ ...profile, university: e.target.value })}
+                                >
+                                    {australianUniversities.map(uni => (
+                                        <MenuItem key={uni} value={uni}>{uni}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                label="Degree Program"
+                                fullWidth
+                                value={profile.degree || ''}
+                                onChange={(e) => setProfile({ ...profile, degree: e.target.value })}
+                                placeholder="e.g., Bachelor of Engineering, Master of Education"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                label="Study Year / Graduation Year"
+                                fullWidth
+                                value={profile.study_year || ''}
+                                onChange={(e) => setProfile({ ...profile, study_year: e.target.value })}
+                                placeholder="e.g., 2nd Year, Graduated 2023"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                label="ATAR (Optional)"
+                                type="number"
+                                fullWidth
+                                value={profile.atar || ''}
+                                onChange={(e) => setProfile({ ...profile, atar: e.target.value })}
+                                placeholder="e.g., 95.50"
+                                inputProps={{ 
+                                    min: 0, 
+                                    max: 99.95, 
+                                    step: 0.05 
+                                }}
+                                helperText="Australian Tertiary Admission Rank (0-99.95)"
+                            />
+                        </Grid>
+                    </Grid>
+
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                        <Typography variant="body2">
+                            <strong>Privacy Note:</strong> This profile information will only be shared with parents 
+                            after you accept their trial session request. It helps parents understand your background 
+                            and teaching approach.
+                        </Typography>
+                    </Alert>
                 </Paper>
 
                 {/* --- COMPLETELY REDESIGNED SUBJECT SELECTION --- */}
