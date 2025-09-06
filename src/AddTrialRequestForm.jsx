@@ -3,6 +3,7 @@ import { supabase } from "./supabaseClient";
 import DateTimePicker from "react-datetime-picker";
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
+import PhoneNumberInput from './components/PhoneNumberInput';
 
 // --- MUI Components ---
 import {
@@ -335,7 +336,16 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
                 <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6 }}><TextField name="parent_name" label="Parent Name" value={sessionDetails.parent_name} onChange={handleSessionChange} fullWidth required /></Grid>
                     <Grid size={{ xs: 12, sm: 6 }}><TextField name="parent_email" label="Parent Email" type="email" value={sessionDetails.parent_email} onChange={handleSessionChange} fullWidth /></Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}><TextField name="parent_phone" label="Parent Phone" value={sessionDetails.parent_phone} onChange={handleSessionChange} fullWidth /></Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <PhoneNumberInput
+                            name="parent_phone"
+                            label="Parent Phone"
+                            value={sessionDetails.parent_phone}
+                            onChange={handleSessionChange}
+                            fullWidth
+                            helperText="Australian phone number for session updates"
+                        />
+                    </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <GooglePlacesAutocomplete
                             value={sessionDetails.location}

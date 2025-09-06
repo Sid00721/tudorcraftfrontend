@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { formatInTimeZone } from 'date-fns-tz';
+import { usePageTitle } from './hooks/usePageTitle';
 
 // Import MUI Components
 import { Box, Button, Typography, Paper, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, List, ListItem, ListItemText, Chip } from '@mui/material';
@@ -24,6 +25,9 @@ export default function TrialDetails() {
   const [loading, setLoading] = useState(true);
   const [trial, setTrial] = useState(null);
   const [matchedTutors, setMatchedTutors] = useState([]);
+  
+  // Set dynamic page title
+  usePageTitle(trial ? `Trial: ${trial.student_name}` : 'Trial Details');
   const [logs, setLogs] = useState([]); // <-- NEW STATE FOR LOGS
   const [isMatching, setIsMatching] = useState(false);
   const [assigningTutorId, setAssigningTutorId] = useState(null);
@@ -35,7 +39,6 @@ export default function TrialDetails() {
     const { data, error } = await supabase.from('trial_requests').select('*').eq('id', trialId).single();
     
     if (error) {
-      console.error('Error fetching trial details', error);
       navigate('/');
     } else {
       setTrial(data);
@@ -46,8 +49,7 @@ export default function TrialDetails() {
         .eq('trial_request_id', trialId)
         .order('created_at', { ascending: false }); // Newest logs first
 
-      if (logsError) console.error('Error fetching logs', logsError);
-      else setLogs(logsData || []);
+      setLogs(logsData || []);
     }
   }, [trialId, navigate]);
 
@@ -70,7 +72,6 @@ export default function TrialDetails() {
         setMatchedTutors(data.matchedTutors);
       } else { throw new Error(data.error || 'Failed to fetch matches.'); }
     } catch (error) {
-      console.error('Failed to fetch matches', error);
       alert('Failed to fetch matches. Is the backend server running?');
     }
     setIsMatching(false);
@@ -89,7 +90,6 @@ export default function TrialDetails() {
       alert('Tutor successfully assigned and trial confirmed!');
       navigate('/');
     } catch (error) {
-      console.error('Failed to assign tutor', error);
       alert('Error: ' + error.message);
     }
     setAssigningTutorId(null);
@@ -106,7 +106,6 @@ export default function TrialDetails() {
       alert(data.message);
       await fetchTrialDetails();
     } catch (error) {
-      console.error('Failed to start outreach', error);
       alert('Error: ' + error.message);
     }
     setIsStartingOutreach(false);
@@ -123,7 +122,6 @@ export default function TrialDetails() {
         alert(data.message);
         await fetchTrialDetails();
     } catch (error) {
-        console.error('Error retrying outreach:', error);
         alert('Error: ' + error.message);
     }
     setIsRetrying(false);

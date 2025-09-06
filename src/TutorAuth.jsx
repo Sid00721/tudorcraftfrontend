@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import { usePageTitle, updateFavicon } from './hooks/usePageTitle';
 import {
     Box,
     Button,
@@ -14,6 +15,7 @@ import {
     CircularProgress,
     Divider,
     useTheme,
+    Link,
 } from '@mui/material';
 import {
     School as SchoolIcon,
@@ -21,6 +23,7 @@ import {
     Lock as LockIcon,
     Person as PersonIcon,
     PersonAdd as PersonAddIcon,
+    LockReset as LockResetIcon,
 } from '@mui/icons-material';
 
 export default function TutorAuth() {
@@ -30,18 +33,54 @@ export default function TutorAuth() {
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
     const theme = useTheme();
+    
+    // Set dynamic page title based on auth state
+    const getTitle = () => {
+        if (isForgotPassword) return 'Reset Password';
+        if (!isLogin) return 'Create Tutor Account';
+        return 'Tutor Login';
+    };
+    
+    usePageTitle(getTitle());
+    
+    useEffect(() => {
+        updateFavicon('tutor');
+    }, []);
 
     const handleAuthAction = async (event) => {
         event.preventDefault();
         setLoading(true);
         setError('');
+        setSuccess('');
 
-        if (isLogin) {
+        if (isForgotPassword) {
+            if (!email) {
+                setError('Please enter your email address first.');
+                setLoading(false);
+                return;
+            }
+
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/tutor/login`,
+            });
+
+            if (error) {
+                setError(error.error_description || error.message);
+            } else {
+                setSuccess('Password reset email sent! Please check your inbox and follow the instructions.');
+                setTimeout(() => {
+                    setIsForgotPassword(false);
+                    setSuccess('');
+                }, 3000);
+            }
+        } else if (isLogin) {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) setError(error.error_description || error.message);
         } else {
-            // Handle Sign Up
+            // Handle Sign Up - check for existing email
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
@@ -53,10 +92,17 @@ export default function TutorAuth() {
                 }
             });
             if (error) {
-                setError(error.error_description || error.message);
+                if (error.message.includes('User already registered')) {
+                    setError('This email address is already registered. Please use the Sign In option instead.');
+                } else {
+                    setError(error.error_description || error.message);
+                }
             } else {
-                alert('Signup successful! Please check your email to verify your account.');
-                setIsLogin(true);
+                setSuccess('Signup successful! Please check your email to verify your account. After verification, you can complete your profile.');
+                setTimeout(() => {
+                    setIsLogin(true);
+                    setSuccess('');
+                }, 4000);
             }
         }
         setLoading(false);
@@ -145,11 +191,11 @@ export default function TutorAuth() {
                                     fontWeight: 500,
                                 }}
                             >
-                                {isLogin ? 'Welcome back, educator!' : 'Join our teaching community'}
+                                {isForgotPassword ? 'Reset your password' : (isLogin ? 'Welcome back, educator!' : 'Join our teaching community')}
                             </Typography>
                         </Box>
 
-                        {/* Error Alert */}
+                        {/* Error & Success Alerts */}
                         {error && (
                             <Fade in={true}>
                                 <Alert 
@@ -166,6 +212,22 @@ export default function TutorAuth() {
                                 </Alert>
                             </Fade>
                         )}
+                        {success && (
+                            <Fade in={true}>
+                                <Alert 
+                                    severity="success" 
+                                    sx={{ 
+                                        mb: 3, 
+                                        borderRadius: 2,
+                                        '& .MuiAlert-icon': {
+                                            fontSize: 20,
+                                        }
+                                    }}
+                                >
+                                    {success}
+                                </Alert>
+                            </Fade>
+                        )}
 
                         {/* Form */}
                         <Box
@@ -173,7 +235,7 @@ export default function TutorAuth() {
                             onSubmit={handleAuthAction}
                             sx={{ width: '100%' }}
                         >
-                            {!isLogin && (
+                            {!isLogin && !isForgotPassword && (
                                 <Box sx={{ mb: 3 }}>
                                     <Typography
                                         variant="body2"
@@ -257,53 +319,77 @@ export default function TutorAuth() {
                                 />
                             </Box>
 
-                            <Box sx={{ mb: 4 }}>
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        fontWeight: 600,
-                                        color: 'text.primary',
-                                        mb: 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 1,
-                                    }}
-                                >
-                                    <LockIcon sx={{ fontSize: 18 }} />
-                                    Password
-                                </Typography>
-                                <TextField
-                                    fullWidth
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    placeholder="Enter your password"
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            borderRadius: 3,
-                                            backgroundColor: 'rgba(248, 249, 250, 0.8)',
-                                            '& fieldset': {
-                                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                            {!isForgotPassword && (
+                                <Box sx={{ mb: 4 }}>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontWeight: 600,
+                                            color: 'text.primary',
+                                            mb: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                        }}
+                                    >
+                                        <LockIcon sx={{ fontSize: 18 }} />
+                                        Password
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        placeholder="Enter your password"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: 3,
+                                                backgroundColor: 'rgba(248, 249, 250, 0.8)',
+                                                '& fieldset': {
+                                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                                },
+                                                '&:hover fieldset': {
+                                                    borderColor: theme.palette.secondary.main,
+                                                },
+                                                '&.Mui-focused fieldset': {
+                                                    borderColor: theme.palette.secondary.main,
+                                                    borderWidth: '2px',
+                                                },
                                             },
-                                            '&:hover fieldset': {
-                                                borderColor: theme.palette.secondary.main,
+                                        }}
+                                    />
+                                </Box>
+                            )}
+
+                            {/* Forgot Password Link - only show on login */}
+                            {isLogin && !isForgotPassword && (
+                                <Box sx={{ textAlign: 'right', mb: 3 }}>
+                                    <Link
+                                        component="button"
+                                        type="button"
+                                        onClick={() => setIsForgotPassword(true)}
+                                        sx={{
+                                            fontSize: '0.875rem',
+                                            fontWeight: 500,
+                                            color: theme.palette.secondary.main,
+                                            textDecoration: 'none',
+                                            '&:hover': {
+                                                textDecoration: 'underline',
                                             },
-                                            '&.Mui-focused fieldset': {
-                                                borderColor: theme.palette.secondary.main,
-                                                borderWidth: '2px',
-                                            },
-                                        },
-                                    }}
-                                />
-                            </Box>
+                                        }}
+                                    >
+                                        Forgot your password?
+                                    </Link>
+                                </Box>
+                            )}
 
                             <Button
                                 type="submit"
                                 fullWidth
                                 variant="contained"
                                 disabled={loading}
-                                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SchoolIcon />}
+                                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : (isForgotPassword ? <LockResetIcon /> : <SchoolIcon />)}
                                 sx={{
                                     py: 1.5,
                                     borderRadius: 3,
@@ -325,7 +411,7 @@ export default function TutorAuth() {
                                     transition: 'all 0.3s ease-in-out',
                                 }}
                             >
-                                {loading ? 'Processing...' : (isLogin ? 'Sign In to Dashboard' : 'Create Tutor Account')}
+                                {loading ? 'Processing...' : (isForgotPassword ? 'Send Reset Email' : (isLogin ? 'Sign In to Dashboard' : 'Create Tutor Account'))}
                             </Button>
 
                             <Divider sx={{ mb: 3, '&::before, &::after': { borderColor: 'rgba(0, 0, 0, 0.12)' } }}>
@@ -337,8 +423,18 @@ export default function TutorAuth() {
                             <Button
                                 fullWidth
                                 variant="outlined"
-                                onClick={() => setIsLogin(!isLogin)}
-                                startIcon={isLogin ? <PersonAddIcon /> : <PersonIcon />}
+                                onClick={() => {
+                                    if (isForgotPassword) {
+                                        setIsForgotPassword(false);
+                                        setError('');
+                                        setSuccess('');
+                                    } else {
+                                        setIsLogin(!isLogin);
+                                        setError('');
+                                        setSuccess('');
+                                    }
+                                }}
+                                startIcon={isForgotPassword ? <PersonIcon /> : (isLogin ? <PersonAddIcon /> : <PersonIcon />)}
                                 sx={{
                                     py: 1.5,
                                     borderRadius: 3,
@@ -357,7 +453,7 @@ export default function TutorAuth() {
                                     transition: 'all 0.2s ease-in-out',
                                 }}
                             >
-                                {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
+                                {isForgotPassword ? 'Back to Sign In' : (isLogin ? 'Need an account? Sign Up' : 'Already have an account? Sign In')}
                             </Button>
                         </Box>
 

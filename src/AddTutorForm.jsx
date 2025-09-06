@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from './supabaseClient';
 import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
+import PhoneNumberInput from './components/PhoneNumberInput';
 import { 
   Box, Button, TextField, Typography, Paper, Grid 
 } from '@mui/material';
@@ -59,12 +60,13 @@ export default function AddTutorForm({ onTutorAdded, onCancel }) {
           </Grid>
           
           <Grid item xs={12}>
-            <TextField 
+            <PhoneNumberInput
               label="Phone Number"
-              value={phone} 
-              onChange={(e) => setPhone(e.target.value)} 
-              fullWidth 
-              required 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              fullWidth
+              required
+              helperText="Australian phone number for contact purposes"
             />
           </Grid>
           

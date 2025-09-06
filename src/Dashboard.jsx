@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 import { Link } from 'react-router-dom';
 import AddTutorForm from './AddTutorForm';
 import AddTrialRequestForm from './AddTrialRequestForm';
+import { usePageTitle, updateFavicon } from './hooks/usePageTitle';
 
 // Import MUI Components
 import { 
@@ -100,18 +101,33 @@ const StatsCard = ({ title, value, icon: Icon, trend, color = 'primary', loading
 
 // Premium Table Card Component
 const PremiumTableCard = ({ title, action, children, loading = false }) => (
-    <Card className="premium-card" sx={{ mb: 4 }}>
+    <Card 
+        className="premium-card" 
+        sx={{ 
+            mb: 4,
+            border: '1px solid #E4E7EB',
+            borderRadius: 3,
+            backgroundColor: '#FFFFFF',
+        }}
+    >
         <CardContent sx={{ p: 0 }}>
-            <Box sx={{ p: 3, pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            <Box sx={{ p: 4, pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
                     {title}
                 </Typography>
                 {action}
             </Box>
             {loading ? (
-                <Box sx={{ p: 3 }}>
+                <Box sx={{ p: 4 }}>
                     {[...Array(3)].map((_, i) => (
-                        <Skeleton key={i} variant="rectangular" height={50} sx={{ mb: 1 }} />
+                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Box sx={{ width: 32, height: 32, bgcolor: '#F4F6F8', borderRadius: '50%' }} />
+                            <Box sx={{ flex: 1 }}>
+                                <Box sx={{ width: '60%', height: 16, bgcolor: '#F4F6F8', borderRadius: 1, mb: 1 }} />
+                                <Box sx={{ width: '40%', height: 12, bgcolor: '#F4F6F8', borderRadius: 1 }} />
+                            </Box>
+                            <Box sx={{ width: 80, height: 32, bgcolor: '#F4F6F8', borderRadius: 1 }} />
+                        </Box>
                     ))}
                 </Box>
             ) : (
@@ -129,6 +145,13 @@ export default function Dashboard() {
     const [trialSessions, setTrialSessions] = useState([]);
     const [showAddTutorForm, setShowAddTutorForm] = useState(false);
     const [showAddRequestForm, setShowAddRequestForm] = useState(false);
+    
+    // Set page title and favicon
+    usePageTitle();
+    
+    useEffect(() => {
+        updateFavicon('admin');
+    }, []);
 
     // --- NEW STATE FOR THE MODAL ---
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -209,44 +232,197 @@ export default function Dashboard() {
     }
 
     return (
-        <Box className="premium-container">
-            <Fade in={true} timeout={600}>
-                <Box>
-                    {/* Premium Page Header */}
-                    <Box className="premium-page-header">
-                        <Box>
+        <Box sx={{ backgroundColor: '#FAFBFC', minHeight: '100vh' }}>
+            <Box sx={{ maxWidth: 1200, mx: 'auto', p: 4 }}>
+                <Fade in={true} timeout={600}>
+                    <Box>
+                        {/* Enterprise Page Header */}
+                        <Box sx={{ mb: 6 }}>
                             <Typography 
                                 variant="h3" 
                                 sx={{ 
                                     fontWeight: 700, 
-                                    background: 'linear-gradient(135deg, #FF9800 0%, #2196F3 100%)',
-                                    backgroundClip: 'text',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    mb: 1
+                                    color: '#111827',
+                                    mb: 2
                                 }}
                             >
-                                Admin Dashboard
+                                Dashboard
                             </Typography>
-                            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                                Manage tutors, sessions, and platform analytics
+                            <Typography variant="body1" sx={{ color: '#6B7280', mb: 4 }}>
+                                Manage your tutoring platform with enterprise-grade tools
                             </Typography>
+                            
+                            {/* Quick Actions */}
+                            <Stack direction="row" spacing={2} sx={{ mb: 4, flexWrap: 'wrap', gap: 2 }}>
+                                <Button 
+                                    onClick={() => setShowAddTutorForm(true)}
+                                    variant="contained" 
+                                    sx={{
+                                        background: 'linear-gradient(135deg, #2D5BFF 0%, #1E47E6 100%)',
+                                        px: 3,
+                                        py: 1.5,
+                                        borderRadius: 2,
+                                        fontWeight: 600,
+                                        textTransform: 'none',
+                                        '&:hover': {
+                                            background: 'linear-gradient(135deg, #1E47E6 0%, #1538CC 100%)',
+                                            transform: 'translateY(-1px)',
+                                        },
+                                    }}
+                                >
+                                    Add Tutor
+                                </Button>
+                                <Button 
+                                    onClick={() => setShowAddRequestForm(true)}
+                                    variant="outlined"
+                                    sx={{
+                                        borderColor: '#E4E7EB',
+                                        color: '#374151',
+                                        px: 3,
+                                        py: 1.5,
+                                        borderRadius: 2,
+                                        fontWeight: 600,
+                                        textTransform: 'none',
+                                        '&:hover': {
+                                            borderColor: '#2D5BFF',
+                                            backgroundColor: '#EBF0FF',
+                                            color: '#2D5BFF',
+                                        },
+                                    }}
+                                >
+                                    Create Session
+                                </Button>
+                            </Stack>
                         </Box>
-                        <Box className="premium-actions">
-                            <Button component={Link} to="/admin/resources" variant="contained" color="secondary" size="large">
-                                Manage Resources
-                            </Button>
-                            <Button component={Link} to="/admin/messages" variant="contained" color="info" size="large">
-                                Message History
-                            </Button>
-                            <Button component={Link} to="/admin/cancellations" variant="contained" color="warning" size="large">
-                                AI Analysis
-                            </Button>
-                            <Button component={Link} to="/admin/reschedules" variant="contained" color="error" size="large">
-                                Reschedules
-                            </Button>
-                        </Box>
-                    </Box>
+                        {/* Management Actions Grid */}
+                        <Grid container spacing={3} sx={{ mb: 6 }}>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <Card
+                                    component={Link}
+                                    to="/admin/approvals"
+                                    sx={{
+                                        textDecoration: 'none',
+                                        border: '1px solid #E4E7EB',
+                                        borderRadius: 3,
+                                        backgroundColor: '#FFFFFF',
+                                        transition: 'all 0.2s ease-in-out',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            borderColor: '#2D5BFF',
+                                        },
+                                    }}
+                                >
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                            <Box
+                                                sx={{
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: 2,
+                                                    backgroundColor: '#EBF0FF',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                <PeopleIcon sx={{ fontSize: 20, color: '#2D5BFF' }} />
+                                            </Box>
+                                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                                                Tutor Approvals
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                            Review and approve new tutor applications
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <Card
+                                    component={Link}
+                                    to="/admin/resources"
+                                    sx={{
+                                        textDecoration: 'none',
+                                        border: '1px solid #E4E7EB',
+                                        borderRadius: 3,
+                                        backgroundColor: '#FFFFFF',
+                                        transition: 'all 0.2s ease-in-out',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            borderColor: '#FF6B2C',
+                                        },
+                                    }}
+                                >
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                            <Box
+                                                sx={{
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: 2,
+                                                    backgroundColor: '#FFF0EB',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                <SchoolIcon sx={{ fontSize: 20, color: '#FF6B2C' }} />
+                                            </Box>
+                                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                                                Resources
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                            Manage educational resources and materials
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <Card
+                                    component={Link}
+                                    to="/admin/messages"
+                                    sx={{
+                                        textDecoration: 'none',
+                                        border: '1px solid #E4E7EB',
+                                        borderRadius: 3,
+                                        backgroundColor: '#FFFFFF',
+                                        transition: 'all 0.2s ease-in-out',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            borderColor: '#2D5BFF',
+                                        },
+                                    }}
+                                >
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                            <Box
+                                                sx={{
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: 2,
+                                                    backgroundColor: '#EBF0FF',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                <EmailIcon sx={{ fontSize: 20, color: '#2D5BFF' }} />
+                                            </Box>
+                                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                                                Messages
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                            View communication history and analytics
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        </Grid>
 
                     {/* Stats Cards */}
                     <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -606,8 +782,9 @@ export default function Dashboard() {
                             </Button>
                         </DialogActions>
                     </Dialog>
-                </Box>
-            </Fade>
+                    </Box>
+                </Fade>
+            </Box>
         </Box>
     );
 }

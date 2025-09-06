@@ -1,11 +1,14 @@
 import './App.css'
+import './premium-styles.css'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, CircularProgress, Typography } from '@mui/material';
 import { supabase } from './supabaseClient'
-import theme from './theme';
+import theme from './theme-premium';
 import PremiumHeader from './components/Layout/PremiumHeader';
 import ErrorBoundary from './components/Layout/ErrorBoundary';
+import { PageTitleManager } from './components/PageTitleManager';
+// import { NotificationProvider } from './components/NotificationSystem';
 
 // Lazy load components for better performance
 const Auth = lazy(() => import('./Auth'));
@@ -20,8 +23,9 @@ const ResourceHub = lazy(() => import('./ResourceHub'));
 const MessageHistory = lazy(() => import('./MessageHistory'));
 const CancellationAnalysis = lazy(() => import('./CancellationAnalysis'));
 const RescheduleManager = lazy(() => import('./RescheduleManager'));
+const TutorApprovalManager = lazy(() => import('./TutorApprovalManager'));
 
-// Premium Loading Component with enhanced styling
+// Premium Enterprise Loading Component
 const PremiumLoader = () => (
     <Box
         sx={{
@@ -29,20 +33,26 @@ const PremiumLoader = () => (
             alignItems: 'center',
             justifyContent: 'center',
             minHeight: '100vh',
-            background: 'linear-gradient(135deg, #FF9800 0%, #2196F3 100%)',
+            background: 'linear-gradient(135deg, #EBF0FF 0%, #FFF0EB 100%)',
             position: 'relative',
-            '&::before': {
-                content: '""',
+        }}
+    >
+        {/* Subtle background pattern */}
+        <Box
+            sx={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%)',
+                backgroundImage: `
+                    radial-gradient(circle at 25% 25%, rgba(45, 91, 255, 0.05) 0%, transparent 25%),
+                    radial-gradient(circle at 75% 75%, rgba(255, 107, 44, 0.05) 0%, transparent 25%)
+                `,
                 zIndex: 1,
-            },
-        }}
-    >
+            }}
+        />
+        
         <Box
             sx={{
                 display: 'flex',
@@ -51,47 +61,66 @@ const PremiumLoader = () => (
                 gap: 3,
                 position: 'relative',
                 zIndex: 2,
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(20px)',
-                padding: 4,
-                borderRadius: 4,
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E4E7EB',
+                borderRadius: 3,
+                padding: 6,
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
             }}
         >
+            {/* Logo */}
             <Box
                 sx={{
-                    width: 60,
-                    height: 60,
-                    border: '4px solid rgba(255, 255, 255, 0.3)',
-                    borderTop: '4px solid white',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                }}
-            />
-            <Box
-                sx={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg, #2D5BFF 0%, #FF6B2C 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     color: 'white',
-                    fontSize: '1.25rem',
+                    fontSize: '24px',
+                    fontWeight: 700,
+                    mb: 2,
+                }}
+            >
+                TC
+            </Box>
+            
+            {/* Loading spinner */}
+            <CircularProgress 
+                size={32} 
+                sx={{ 
+                    color: '#2D5BFF',
+                    mb: 1
+                }} 
+            />
+            
+            <Typography
+                variant="h6"
+                sx={{
+                    color: '#111827',
                     fontWeight: 600,
-                    letterSpacing: '0.5px',
                     textAlign: 'center',
                 }}
             >
-                Loading TutorCraft...
-            </Box>
+                Loading TutorCraft
+            </Typography>
+            
+            <Typography
+                variant="body2"
+                sx={{
+                    color: '#6B7280',
+                    textAlign: 'center',
+                }}
+            >
+                Preparing your dashboard...
+            </Typography>
         </Box>
-        <style>
-            {`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}
-        </style>
     </Box>
 );
 
-// Component Loading Fallback
+// Premium Component Loading Fallback
 const ComponentLoader = () => (
     <Box
         sx={{
@@ -99,17 +128,26 @@ const ComponentLoader = () => (
             alignItems: 'center',
             justifyContent: 'center',
             minHeight: '400px',
-            background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(33, 150, 243, 0.1) 100%)',
+            backgroundColor: '#FAFBFC',
             borderRadius: 3,
-            border: '1px solid rgba(255, 152, 0, 0.2)',
+            border: '1px solid #E4E7EB',
             margin: 2,
         }}
     >
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <CircularProgress size={40} />
-            <Box sx={{ color: 'text.secondary', fontWeight: 500 }}>
+            <CircularProgress 
+                size={32} 
+                sx={{ color: '#2D5BFF' }} 
+            />
+            <Typography 
+                variant="body2" 
+                sx={{ 
+                    color: '#6B7280', 
+                    fontWeight: 500 
+                }}
+            >
                 Loading component...
-            </Box>
+            </Typography>
         </Box>
     </Box>
 );
@@ -180,6 +218,7 @@ export default function App() {
             <ThemeProvider theme={theme}>
                 <CssBaseline />
                 <BrowserRouter>
+                    <PageTitleManager>
                     <Routes>
                         {/* Admin Routes */}
                         <Route 
@@ -202,6 +241,7 @@ export default function App() {
                             <Route path="/admin/messages" element={<MessageHistory />} />
                             <Route path="/admin/cancellations" element={<CancellationAnalysis />} />
                             <Route path="/admin/reschedules" element={<RescheduleManager />} />
+                            <Route path="/admin/approvals" element={<TutorApprovalManager />} />
                         </Route>
 
                         {/* Tutor Routes */}
@@ -224,6 +264,7 @@ export default function App() {
                         </Route>
 
                     </Routes>
+                    </PageTitleManager>
                 </BrowserRouter>
             </ThemeProvider>
         </ErrorBoundary>

@@ -3,6 +3,8 @@ import { supabase } from './supabaseClient';
 import DateTimePicker from 'react-datetime-picker';
 import { format } from 'date-fns';
 import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
+import PhoneNumberInput from './components/PhoneNumberInput';
+import { usePageTitle, updateFavicon } from './hooks/usePageTitle';
 
 // Import MUI Components
 import { 
@@ -50,10 +52,24 @@ export default function TutorProfile() {
     const [selectedLevel, setSelectedLevel] = useState('All');
     const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
     
-    // --- Availability State (unchanged) ---
+    // --- Enhanced Availability State with Recurring Support ---
     const [unavailability, setUnavailability] = useState([]);
-    const [newBlockout, setNewBlockout] = useState({ start_time: new Date(), end_time: new Date() });
+    const [newBlockout, setNewBlockout] = useState({ 
+        start_time: new Date(), 
+        end_time: new Date(),
+        is_recurring: false,
+        recurrence_pattern: 'weekly',
+        recurrence_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        reason: ''
+    });
     const [isSavingBlockout, setIsSavingBlockout] = useState(false);
+    
+    // Set dynamic page title
+    usePageTitle(profile?.full_name ? `${profile.full_name} - Profile` : 'Tutor Profile');
+    
+    useEffect(() => {
+        updateFavicon('tutor');
+    }, []);
 
     const fetchData = useCallback(async (userId) => {
         // Fetch profile and selected subjects
@@ -83,8 +99,8 @@ export default function TutorProfile() {
             .select('*')
             .eq('tutor_id', userId)
             .order('start_time', { ascending: true });
-        if (unavailabilityError) console.error("Error fetching unavailability:", unavailabilityError);
-        else setUnavailability(unavailabilityData || []);
+        // Set unavailability data
+        setUnavailability(unavailabilityData || []);
         
         setLoading(false);
     }, []);
@@ -134,29 +150,48 @@ export default function TutorProfile() {
         return allSubjects.filter(s => selectedSubjects.has(s.id)).map(s => s.name);
     };
 
-    // Photo upload handler
+    // Enhanced photo upload handler with better error handling
     const handlePhotoUpload = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-            alert('Please select an image file.');
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type.toLowerCase())) {
+            alert('Please select a valid image file (JPG, PNG, GIF, or WebP).');
             return;
         }
 
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-            alert('Please select an image smaller than 5MB.');
+            alert(`File size is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please select an image smaller than 5MB.`);
             return;
         }
 
         setPhotoUploading(true);
+        setSuccessMessage(''); // Clear any previous messages
 
         try {
-            // Create unique filename
-            const fileExt = file.name.split('.').pop();
+            // Create unique filename with proper extension
+            const fileExt = file.name.split('.').pop().toLowerCase();
             const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+            // Uploading photo with unique filename
+
+            // First, delete any existing photo for this user
+            const existingPhotoPath = profile.profile_photo_url;
+            if (existingPhotoPath) {
+                try {
+                    const existingFileName = existingPhotoPath.split('/').pop();
+                    await supabase.storage
+                        .from('tutor-photos')
+                        .remove([existingFileName]);
+                    // Successfully removed existing photo
+                } catch (deleteError) {
+                    // Could not delete existing photo, continuing with upload
+                    // Continue with upload even if delete fails
+                }
+            }
 
             // Upload to Supabase Storage
             const { data: uploadData, error: uploadError } = await supabase.storage
@@ -166,7 +201,18 @@ export default function TutorProfile() {
                     upsert: true
                 });
 
-            if (uploadError) throw uploadError;
+            if (uploadError) {
+                // Upload failed
+                if (uploadError.message.includes('not found')) {
+                    throw new Error('Photo storage bucket not found. Please contact support to set up photo storage.');
+                } else if (uploadError.message.includes('policy')) {
+                    throw new Error('Permission denied. Please make sure you are logged in as a tutor.');
+                } else {
+                    throw uploadError;
+                }
+            }
+
+            // Upload successful
 
             // Get public URL
             const { data: urlData } = supabase.storage
@@ -174,6 +220,7 @@ export default function TutorProfile() {
                 .getPublicUrl(fileName);
 
             const photoUrl = urlData.publicUrl;
+            // Got photo URL
 
             // Update profile with photo URL
             const { error: updateError } = await supabase
@@ -181,15 +228,34 @@ export default function TutorProfile() {
                 .update({ profile_photo_url: photoUrl })
                 .eq('id', user.id);
 
-            if (updateError) throw updateError;
+            if (updateError) {
+                // Database update failed
+                throw updateError;
+            }
 
+            // Update local state
             setProfile(prev => ({ ...prev, profile_photo_url: photoUrl }));
             setPhotoPreview(photoUrl);
-            setSuccessMessage('Profile photo updated successfully!');
+            setSuccessMessage('✅ Profile photo updated successfully!');
+            
+            // Clear the file input
+            event.target.value = '';
 
         } catch (error) {
-            console.error('Error uploading photo:', error);
-            alert('Error uploading photo: ' + error.message);
+            // Error uploading photo
+            let errorMessage = 'Error uploading photo: ';
+            
+            if (error.message.includes('not found')) {
+                errorMessage += 'Storage bucket not found. Please contact support.';
+            } else if (error.message.includes('policy')) {
+                errorMessage += 'Permission denied. Please make sure you are logged in.';
+            } else if (error.message.includes('size')) {
+                errorMessage += 'File too large. Please select an image smaller than 5MB.';
+            } else {
+                errorMessage += error.message || 'Unknown error occurred.';
+            }
+            
+            alert(errorMessage);
         } finally {
             setPhotoUploading(false);
         }
@@ -277,22 +343,51 @@ export default function TutorProfile() {
         setSaving(false);
     };
 
-    // --- NEW HANDLERS for Availability ---
+    // --- ENHANCED HANDLERS for Availability with Recurring Support ---
     const handleAddNewBlockout = async () => {
         if (newBlockout.end_time <= newBlockout.start_time) {
             alert('End time must be after the start time.');
             return;
         }
+        
+        if (newBlockout.is_recurring && newBlockout.recurrence_end_date <= newBlockout.start_time) {
+            alert('Recurrence end date must be after the start time.');
+            return;
+        }
+        
         setIsSavingBlockout(true);
+        
+        const blockoutData = {
+            tutor_id: user.id,
+            start_time: newBlockout.start_time.toISOString(),
+            end_time: newBlockout.end_time.toISOString(),
+            reason: newBlockout.reason || null,
+            is_recurring: newBlockout.is_recurring,
+            recurrence_pattern: newBlockout.is_recurring ? {
+                type: newBlockout.recurrence_pattern,
+                end_date: newBlockout.recurrence_end_date.toISOString()
+            } : null
+        };
+        
         const { error } = await supabase
             .from('tutor_unavailability')
-            .insert({
-                tutor_id: user.id,
-                start_time: newBlockout.start_time.toISOString(),
-                end_time: newBlockout.end_time.toISOString(),
+            .insert(blockoutData);
+            
+        if (error) {
+            alert('Error adding time block: ' + error.message);
+        } else {
+            setSuccessMessage(`${newBlockout.is_recurring ? 'Recurring ' : ''}unavailability block added successfully!`);
+            // Reset form
+            setNewBlockout({ 
+                start_time: new Date(), 
+                end_time: new Date(),
+                is_recurring: false,
+                recurrence_pattern: 'weekly',
+                recurrence_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                reason: ''
             });
-        if (error) alert('Error adding time block: ' + error.message);
-        else await fetchData(user.id); // Refresh the list
+            await fetchData(user.id); // Refresh the list
+        }
         setIsSavingBlockout(false);
     };
 
@@ -311,6 +406,38 @@ export default function TutorProfile() {
         <Box sx={{ p: 3, maxWidth: 900, margin: 'auto' }}>
             <Typography variant="h4" gutterBottom>My Profile</Typography>
             <form onSubmit={handleUpdateProfile}>
+                {/* Approval Status Alert */}
+                {profile.approval_status && (
+                    <Alert 
+                        severity={
+                            profile.approval_status === 'approved' ? 'success' :
+                            profile.approval_status === 'rejected' ? 'error' :
+                            profile.approval_status === 'suspended' ? 'warning' : 'info'
+                        }
+                        sx={{ mb: 3 }}
+                    >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            Profile Status: {profile.approval_status.charAt(0).toUpperCase() + profile.approval_status.slice(1)}
+                        </Typography>
+                        <Typography variant="body2">
+                            {profile.approval_status === 'pending' && 'Your profile is under review by our admin team. You will be able to receive student assignments once approved.'}
+                            {profile.approval_status === 'approved' && 'Your profile has been approved! You can now receive student assignments.'}
+                            {profile.approval_status === 'rejected' && 'Your profile needs attention. Please update your information and contact support.'}
+                            {profile.approval_status === 'suspended' && 'Your account is temporarily suspended. Please contact support for assistance.'}
+                        </Typography>
+                        {profile.approval_notes && (
+                            <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                                Admin notes: {profile.approval_notes}
+                            </Typography>
+                        )}
+                        {!profile.profile_complete && (
+                            <Typography variant="body2" sx={{ mt: 1, fontWeight: 500, color: 'warning.main' }}>
+                                ⚠️ Complete all required fields below to be eligible for approval.
+                            </Typography>
+                        )}
+                    </Alert>
+                )}
+
                 <Paper sx={{ p: 3, mb: 3 }}>
                     <Typography variant="h6" gutterBottom>Contact Information</Typography>
                     <TextField label="Email" value={user?.email || ''} fullWidth disabled sx={{ mb: 2 }} />
@@ -325,13 +452,14 @@ export default function TutorProfile() {
                         componentRestrictions={{ country: 'AU' }}
                         sx={{ mb: 2 }}
                     />
-                    <TextField 
-                        label="Phone Number" 
-                        value={profile.phone_number || ''} 
-                        onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })} 
-                        fullWidth 
-                        required 
-                        sx={{ mb: 2 }} 
+                    <PhoneNumberInput
+                        label="Phone Number"
+                        value={profile.phone_number || ''}
+                        onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
+                        fullWidth
+                        required
+                        sx={{ mb: 2 }}
+                        helperText="This will be used to contact you about trial sessions" 
                     />
                     
                     <FormControl sx={{ mb: 2 }}>
@@ -391,8 +519,13 @@ export default function TutorProfile() {
                                     </Button>
                                 </label>
                                 <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
-                                    Max 5MB. JPG, PNG, or GIF format.
+                                    Max 5MB. JPG, PNG, GIF, or WebP format.
                                 </Typography>
+                                {photoUploading && (
+                                    <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'info.main' }}>
+                                        📤 Uploading your photo...
+                                    </Typography>
+                                )}
                             </Box>
                         </Box>
                     </Box>
@@ -633,8 +766,35 @@ export default function TutorProfile() {
                                 secondaryAction={<IconButton edge="end" aria-label="delete" onClick={() => handleDeleteBlockout(block.id)}><DeleteIcon /></IconButton>}
                             >
                                 <ListItemText 
-                                    primary={`From: ${format(new Date(block.start_time), 'd MMM yyyy, h:mm a')}`}
-                                    secondary={`To: ${format(new Date(block.end_time), 'd MMM yyyy, h:mm a')}`}
+                                    primary={
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                {`${format(new Date(block.start_time), 'd MMM yyyy, h:mm a')} - ${format(new Date(block.end_time), 'd MMM yyyy, h:mm a')}`}
+                                            </Typography>
+                                            {block.is_recurring && (
+                                                <Chip 
+                                                    size="small" 
+                                                    label={`Recurring ${block.recurrence_pattern?.type || 'weekly'}`}
+                                                    color="info"
+                                                    variant="outlined"
+                                                />
+                                            )}
+                                        </Box>
+                                    }
+                                    secondary={
+                                        <Box>
+                                            {block.reason && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Reason: {block.reason}
+                                                </Typography>
+                                            )}
+                                            {block.is_recurring && block.recurrence_pattern?.end_date && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                                    Repeats until: {format(new Date(block.recurrence_pattern.end_date), 'd MMM yyyy')}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    }
                                 />
                             </ListItem>
                         )) : <Typography variant="body2" sx={{p:1}}>You have no unavailable times scheduled.</Typography>}
@@ -643,7 +803,31 @@ export default function TutorProfile() {
                     <Divider sx={{ my: 2 }} />
 
                     <Typography variant="subtitle1" sx={{fontWeight: 'bold', mb: 2}}>Add New Unavailable Time</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    
+                    {/* Recurring Checkbox */}
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={newBlockout.is_recurring}
+                                onChange={(e) => setNewBlockout(prev => ({ ...prev, is_recurring: e.target.checked }))}
+                            />
+                        }
+                        label="Make this a recurring unavailability"
+                        sx={{ mb: 2 }}
+                    />
+                    
+                    {/* Reason Field */}
+                    <TextField
+                        fullWidth
+                        label="Reason (optional)"
+                        value={newBlockout.reason}
+                        onChange={(e) => setNewBlockout(prev => ({ ...prev, reason: e.target.value }))}
+                        placeholder="e.g., University classes, Work commitments"
+                        sx={{ mb: 2 }}
+                        helperText="Providing a reason helps with scheduling decisions"
+                    />
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                         <Box>
                             <Typography variant="caption">Start Time</Typography>
                             <DateTimePicker onChange={(val) => setNewBlockout({...newBlockout, start_time: val})} value={newBlockout.start_time} />
@@ -652,10 +836,66 @@ export default function TutorProfile() {
                             <Typography variant="caption">End Time</Typography>
                             <DateTimePicker onChange={(val) => setNewBlockout({...newBlockout, end_time: val})} value={newBlockout.end_time} />
                         </Box>
-                        <Button variant="contained" color="secondary" onClick={handleAddNewBlockout} disabled={isSavingBlockout}>
-                            {isSavingBlockout ? <CircularProgress size={24} /> : 'Save Unavailable Time'}
-                        </Button>
                     </Box>
+                    
+                    {/* Recurring Options */}
+                    {newBlockout.is_recurring && (
+                        <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2, mb: 2, bgcolor: 'rgba(33, 150, 243, 0.04)' }}>
+                            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                                🔄 Recurring Settings
+                            </Typography>
+                            
+                            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                                <FormControl sx={{ minWidth: 150 }}>
+                                    <InputLabel>Repeat Pattern</InputLabel>
+                                    <Select
+                                        value={newBlockout.recurrence_pattern}
+                                        label="Repeat Pattern"
+                                        onChange={(e) => setNewBlockout(prev => ({ ...prev, recurrence_pattern: e.target.value }))}
+                                    >
+                                        <MenuItem value="weekly">Weekly (every 7 days)</MenuItem>
+                                        <MenuItem value="fortnightly">Fortnightly (every 14 days)</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                
+                                <Box>
+                                    <Typography variant="caption">Repeat Until</Typography>
+                                    <DateTimePicker
+                                        onChange={(date) => setNewBlockout(prev => ({ ...prev, recurrence_end_date: date }))}
+                                        value={newBlockout.recurrence_end_date}
+                                    />
+                                </Box>
+                            </Box>
+                            
+                            <Alert severity="info" sx={{ mt: 1 }}>
+                                <Typography variant="caption">
+                                    This will create recurring unavailability blocks {newBlockout.recurrence_pattern} 
+                                    from {format(newBlockout.start_time, 'MMM d, yyyy')} until {format(newBlockout.recurrence_end_date, 'MMM d, yyyy')}.
+                                    Each block will be {Math.round((newBlockout.end_time - newBlockout.start_time) / (1000 * 60 * 60))} hours long.
+                                </Typography>
+                            </Alert>
+                        </Box>
+                    )}
+                    
+                    <Button 
+                        variant="contained" 
+                        color="secondary" 
+                        onClick={handleAddNewBlockout} 
+                        disabled={isSavingBlockout}
+                        size="large"
+                        sx={{ 
+                            minWidth: 200,
+                            background: newBlockout.is_recurring 
+                                ? 'linear-gradient(135deg, #2196F3 0%, #FF9800 100%)' 
+                                : undefined
+                        }}
+                    >
+                        {isSavingBlockout ? (
+                            <CircularProgress size={24} color="inherit" />
+                        ) : (
+                            `Add ${newBlockout.is_recurring ? 'Recurring ' : ''}Unavailable Time`
+                        )}
+                    </Button>
                 </Paper>
                 
                 <Button type="submit" variant="contained" sx={{ mt: 1 }} disabled={saving}>

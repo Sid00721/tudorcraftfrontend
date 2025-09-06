@@ -79,6 +79,7 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
 
   const navigationItems = userRole === 'admin' ? [
     { label: 'Dashboard', path: '/', icon: DashboardIcon },
+    { label: 'Approvals', path: '/admin/approvals', icon: PersonIcon },
     { label: 'Resources', path: '/admin/resources', icon: SchoolIcon },
     { label: 'Messages', path: '/admin/messages', icon: NotificationsIcon },
     { label: 'Analytics', path: '/admin/cancellations', icon: SettingsIcon },

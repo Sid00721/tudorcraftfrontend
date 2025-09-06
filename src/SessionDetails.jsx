@@ -1,11 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { usePageTitle } from './hooks/usePageTitle';
 import {
     Box, Button, Typography, Paper, CircularProgress, Grid,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Alert, Chip, List, ListItem, ListItemText, Divider
+    Alert, Chip, List, ListItem, ListItemText, Divider, Container,
+    Card, CardContent, Avatar, Stack, IconButton, Badge
 } from '@mui/material';
+import {
+    ArrowBack as BackIcon,
+    Person as PersonIcon,
+    Email as EmailIcon,
+    Phone as PhoneIcon,
+    LocationOn as LocationIcon,
+    School as SchoolIcon,
+    Schedule as ScheduleIcon,
+    Search as SearchIcon,
+    Assignment as AssignIcon,
+    PlayArrow as StartIcon,
+    CheckCircle as CheckIcon,
+    Cancel as CancelIcon,
+} from '@mui/icons-material';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
@@ -15,6 +31,9 @@ export default function SessionDetails() {
 
     const [loading, setLoading] = useState(true);
     const [session, setSession] = useState(null);
+    
+    // Set dynamic page title
+    usePageTitle(session ? `Session: ${session.parent_name}` : 'Session Details');
     const [matchedTutors, setMatchedTutors] = useState([]);
     const [isMatching, setIsMatching] = useState(false);
     const [isStartingOutreach, setIsStartingOutreach] = useState(false);
@@ -97,112 +116,415 @@ export default function SessionDetails() {
         setIsStartingOutreach(false);
     };
 
-    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
-    if (!session) return <Typography>Session not found. <Link to="/">Go back to Dashboard</Link>.</Typography>;
+    if (loading) {
+        return (
+            <Box sx={{ backgroundColor: '#FAFBFC', minHeight: '100vh' }}>
+                <Container maxWidth="xl" sx={{ py: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+                        <CircularProgress sx={{ color: '#2D5BFF' }} />
+                    </Box>
+                </Container>
+            </Box>
+        );
+    }
+    
+    if (!session) {
+        return (
+            <Box sx={{ backgroundColor: '#FAFBFC', minHeight: '100vh' }}>
+                <Container maxWidth="xl" sx={{ py: 4 }}>
+                    <Card sx={{ border: '1px solid #E4E7EB', borderRadius: 3, p: 6, textAlign: 'center' }}>
+                        <Typography variant="h6" sx={{ color: '#6B7280', mb: 2 }}>
+                            Session not found
+                        </Typography>
+                        <Button component={Link} to="/" variant="contained">
+                            Go back to Dashboard
+                        </Button>
+                    </Card>
+                </Container>
+            </Box>
+        );
+    }
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Button component={Link} to="/" sx={{ mb: 2 }}>&larr; Back to Dashboard</Button>
+        <Box sx={{ backgroundColor: '#FAFBFC', minHeight: '100vh' }}>
+            <Container maxWidth="xl" sx={{ py: 4 }}>
+                {/* Header */}
+                <Box sx={{ mb: 6 }}>
+                    <Button 
+                        component={Link} 
+                        to="/" 
+                        startIcon={<BackIcon />}
+                        sx={{ 
+                            mb: 3,
+                            color: '#6B7280',
+                            '&:hover': {
+                                backgroundColor: '#F4F6F8',
+                                color: '#374151',
+                            }
+                        }}
+                    >
+                        Back to Dashboard
+                    </Button>
+                    
+                    <Typography
+                        variant="h3"
+                        sx={{
+                            fontWeight: 700,
+                            color: '#111827',
+                            mb: 2,
+                        }}
+                    >
+                        Session Details
+                    </Typography>
+                    <Typography
+                        variant="body1"
+                        sx={{
+                            color: '#6B7280',
+                        }}
+                    >
+                        Manage and track this trial session
+                    </Typography>
+                </Box>
 
-            <Grid container spacing={3}>
-                {/* Left Column: Details */}
-                <Grid item xs={12} md={5}>
-                    <Paper sx={{ p: 2, mb: 3 }}>
-                        <Typography variant="h5" gutterBottom>Session Details</Typography>
-                        <Typography><strong>Parent:</strong> {session.parent_name}</Typography>
-                        <Typography><strong>Email:</strong> {session.parent_email}</Typography>
-                        <Typography><strong>Phone:</strong> {session.parent_phone}</Typography>
-                        <Typography><strong>Location:</strong> {session.location}</Typography>
-                        <Typography><strong>Status:</strong> <Chip label={session.status} size="small" color={session.status === 'Confirmed' ? 'success' : 'default'} /></Typography>
-                        {session.assigned_tutor && (
-                            <Typography><strong>Assigned Tutor:</strong> {session.assigned_tutor.full_name}</Typography>
-                        )}
-                    </Paper>
-                    <Paper sx={{ p: 2 }}>
-                        <Typography variant="h5" gutterBottom>Lessons in this Session</Typography>
-                        <List dense>
-                            {session.trial_lessons.map((lesson, index) => (
-                                <Box key={lesson.id}>
-                                    <ListItem>
-                                        <ListItemText 
-                                            primary={`${lesson.subjects.name} - Grade ${lesson.student_grade}`}
-                                            secondary={`Student: ${lesson.student_name}`}
-                                        />
-                                    </ListItem>
-                                    {index < session.trial_lessons.length - 1 && <Divider />}
+                <Grid container spacing={4}>
+                    {/* Left Column: Session Information */}
+                    <Grid item xs={12} lg={5}>
+                        {/* Session Overview */}
+                        <Card sx={{ border: '1px solid #E4E7EB', borderRadius: 3, mb: 4 }}>
+                            <CardContent sx={{ p: 4 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                                    <Box
+                                        sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: 2,
+                                            backgroundColor: '#EBF0FF',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                    >
+                                        <PersonIcon sx={{ fontSize: 20, color: '#2D5BFF' }} />
+                                    </Box>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                                        Session Information
+                                    </Typography>
                                 </Box>
-                            ))}
-                        </List>
-                    </Paper>
-                </Grid>
-
-                {/* Right Column: Matching & Actions */}
-                <Grid item xs={12} md={7}>
-                    <Paper sx={{ p: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h5">Tutor Matching</Typography>
-                            {session.status === 'Pending' && (
-                                <Button variant="contained" onClick={handleFindMatch} disabled={isMatching}>
-                                    {isMatching ? <CircularProgress size={24} /> : 'Find Matching Tutors'}
-                                </Button>
-                            )}
-                        </Box>
-
-                        <TableContainer>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Name</TableCell>
-                                        <TableCell>Suburb</TableCell>
-                                        <TableCell>Travel</TableCell>
-                                        <TableCell align="right">Actions</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {isMatching ? (
-                                        <TableRow><TableCell colSpan={4} align="center"><CircularProgress /></TableCell></TableRow>
-                                    ) : matchedTutors.length > 0 ? (
-                                        matchedTutors.map(tutor => (
-                                            <TableRow key={tutor.id}>
-                                                <TableCell>{tutor.full_name}</TableCell>
-                                                <TableCell>{tutor.suburb}</TableCell>
-                                                <TableCell>{tutor.travelTimeText || 'N/A'}</TableCell>
-                                                <TableCell align="right">
-                                                    <Button 
-                                                        variant="outlined" 
-                                                        size="small" 
-                                                        disabled={assigningTutorId !== null}
-                                                        onClick={() => handleAssignTutor(tutor.id)}
-                                                    >
-                                                        {assigningTutorId === tutor.id ? <CircularProgress size={20} /> : 'Assign'}
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow><TableCell colSpan={4} align="center">No tutors matched yet.</TableCell></TableRow>
+                                
+                                <Stack spacing={3}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <PersonIcon sx={{ fontSize: 18, color: '#6B7280' }} />
+                                        <Box>
+                                            <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '0.75rem' }}>Parent</Typography>
+                                            <Typography variant="body1" sx={{ fontWeight: 500, color: '#111827' }}>
+                                                {session.parent_name}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <EmailIcon sx={{ fontSize: 18, color: '#6B7280' }} />
+                                        <Box>
+                                            <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '0.75rem' }}>Email</Typography>
+                                            <Typography variant="body1" sx={{ fontWeight: 500, color: '#111827' }}>
+                                                {session.parent_email}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    
+                                    {session.parent_phone && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <PhoneIcon sx={{ fontSize: 18, color: '#6B7280' }} />
+                                            <Box>
+                                                <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '0.75rem' }}>Phone</Typography>
+                                                <Typography variant="body1" sx={{ fontWeight: 500, color: '#111827' }}>
+                                                    {session.parent_phone}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
                                     )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                    
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <LocationIcon sx={{ fontSize: 18, color: '#6B7280' }} />
+                                        <Box>
+                                            <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '0.75rem' }}>Location</Typography>
+                                            <Typography variant="body1" sx={{ fontWeight: 500, color: '#111827' }}>
+                                                {session.location}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <ScheduleIcon sx={{ fontSize: 18, color: '#6B7280' }} />
+                                        <Box>
+                                            <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '0.75rem' }}>Status</Typography>
+                                            <Chip 
+                                                label={session.status} 
+                                                size="small"
+                                                sx={{
+                                                    backgroundColor: session.status === 'Confirmed' ? '#ECFDF5' : 
+                                                                    session.status === 'Pending' ? '#FFFBEB' : '#FEF2F2',
+                                                    color: session.status === 'Confirmed' ? '#10B981' : 
+                                                           session.status === 'Pending' ? '#F59E0B' : '#EF4444',
+                                                    border: `1px solid ${session.status === 'Confirmed' ? '#D1FAE5' : 
+                                                                        session.status === 'Pending' ? '#FED7AA' : '#FECACA'}`,
+                                                    fontWeight: 600,
+                                                }}
+                                            />
+                                        </Box>
+                                    </Box>
+                                    
+                                    {session.assigned_tutor && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <CheckIcon sx={{ fontSize: 18, color: '#10B981' }} />
+                                            <Box>
+                                                <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '0.75rem' }}>Assigned Tutor</Typography>
+                                                <Typography variant="body1" sx={{ fontWeight: 600, color: '#10B981' }}>
+                                                    {session.assigned_tutor.full_name}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    )}
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                        
+                        {/* Lessons Card */}
+                        <Card sx={{ border: '1px solid #E4E7EB', borderRadius: 3 }}>
+                            <CardContent sx={{ p: 4 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                                    <Box
+                                        sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: 2,
+                                            backgroundColor: '#FFF0EB',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                    >
+                                        <SchoolIcon sx={{ fontSize: 20, color: '#FF6B2C' }} />
+                                    </Box>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                                        Lessons in this Session
+                                    </Typography>
+                                </Box>
+                                
+                                <Stack spacing={2}>
+                                    {session.trial_lessons.map((lesson, index) => (
+                                        <Box 
+                                            key={lesson.id}
+                                            sx={{
+                                                p: 3,
+                                                border: '1px solid #E4E7EB',
+                                                borderRadius: 2,
+                                                backgroundColor: '#FAFBFC',
+                                            }}
+                                        >
+                                            <Typography variant="body1" sx={{ fontWeight: 600, color: '#111827', mb: 1 }}>
+                                                {lesson.subjects.name} - Grade {lesson.student_grade}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                                Student: {lesson.student_name}
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    </Grid>
 
-                         {matchedTutors.length > 0 && session.status === 'Pending' && (
-                            <Box sx={{ p: 2, mt: 2, backgroundColor: '#e8f4fd', borderRadius: 1 }}>
-                                <Typography variant="h6">Ready to Go!</Typography>
-                                <Typography sx={{mb: 2}}>You have a shortlist of {matchedTutors.length} tutors.</Typography>
-                                <Button 
-                                    variant="contained" 
-                                    color="primary"
-                                    disabled={isStartingOutreach}
-                                    onClick={handleStartOutreach}
-                                >
-                                    {isStartingOutreach ? <CircularProgress size={24} /> : 'Start Automated Outreach'}
-                                </Button>
-                            </Box>
-                         )}
-                    </Paper>
+                    {/* Right Column: Tutor Matching */}
+                    <Grid item xs={12} lg={7}>
+                        <Card sx={{ border: '1px solid #E4E7EB', borderRadius: 3 }}>
+                            <CardContent sx={{ p: 4 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box
+                                            sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: 2,
+                                                backgroundColor: '#FFF0EB',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            <SearchIcon sx={{ fontSize: 20, color: '#FF6B2C' }} />
+                                        </Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#111827' }}>
+                                            Tutor Matching
+                                        </Typography>
+                                    </Box>
+                                    
+                                    {session.status === 'Pending' && (
+                                        <Button 
+                                            variant="contained" 
+                                            onClick={handleFindMatch} 
+                                            disabled={isMatching}
+                                            startIcon={isMatching ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />}
+                                            sx={{
+                                                background: 'linear-gradient(135deg, #2D5BFF 0%, #1E47E6 100%)',
+                                                borderRadius: 2,
+                                                px: 3,
+                                                py: 1.5,
+                                                fontWeight: 600,
+                                                textTransform: 'none',
+                                                '&:hover': {
+                                                    background: 'linear-gradient(135deg, #1E47E6 0%, #1538CC 100%)',
+                                                },
+                                            }}
+                                        >
+                                            {isMatching ? 'Searching...' : 'Find Matching Tutors'}
+                                        </Button>
+                                    )}
+                                </Box>
+
+                                {/* Tutors Table */}
+                                <Box sx={{ border: '1px solid #E4E7EB', borderRadius: 2, overflow: 'hidden' }}>
+                                    <TableContainer>
+                                        <Table className="premium-table">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell sx={{ fontWeight: 600, color: '#6B7280', fontSize: '0.75rem', textTransform: 'uppercase' }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600, color: '#6B7280', fontSize: '0.75rem', textTransform: 'uppercase' }}>Location</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600, color: '#6B7280', fontSize: '0.75rem', textTransform: 'uppercase' }}>Travel Time</TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '0.75rem', textTransform: 'uppercase' }}>Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {isMatching ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                                                <CircularProgress sx={{ color: '#2D5BFF' }} />
+                                                                <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                                                    Finding qualified tutors...
+                                                                </Typography>
+                                                            </Box>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : matchedTutors.length > 0 ? (
+                                                    matchedTutors.map(tutor => (
+                                                        <TableRow 
+                                                            key={tutor.id}
+                                                            sx={{
+                                                                '&:hover': {
+                                                                    backgroundColor: '#FAFBFC',
+                                                                }
+                                                            }}
+                                                        >
+                                                            <TableCell>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                                    <Avatar sx={{ width: 32, height: 32, backgroundColor: '#2D5BFF', fontSize: '0.875rem' }}>
+                                                                        {tutor.full_name?.[0] || 'T'}
+                                                                    </Avatar>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
+                                                                        {tutor.full_name}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                                                    {tutor.suburb}
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                                                    {tutor.travelTimeText || 'N/A'}
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell align="right">
+                                                                <Button 
+                                                                    variant="outlined" 
+                                                                    size="small" 
+                                                                    disabled={assigningTutorId !== null}
+                                                                    onClick={() => handleAssignTutor(tutor.id)}
+                                                                    startIcon={assigningTutorId === tutor.id ? 
+                                                                        <CircularProgress size={14} color="inherit" /> : 
+                                                                        <AssignIcon sx={{ fontSize: 14 }} />
+                                                                    }
+                                                                    sx={{
+                                                                        borderColor: '#E4E7EB',
+                                                                        color: '#374151',
+                                                                        fontWeight: 500,
+                                                                        textTransform: 'none',
+                                                                        '&:hover': {
+                                                                            borderColor: '#2D5BFF',
+                                                                            backgroundColor: '#EBF0FF',
+                                                                            color: '#2D5BFF',
+                                                                        },
+                                                                    }}
+                                                                >
+                                                                    {assigningTutorId === tutor.id ? 'Assigning...' : 'Assign'}
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} align="center" sx={{ py: 6 }}>
+                                                            <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                                                No tutors matched yet.
+                                                            </Typography>
+                                                            <Typography variant="caption" sx={{ color: '#9DA4AE' }}>
+                                                                Click "Find Matching Tutors" to search for qualified tutors
+                                                            </Typography>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+
+                                {/* Outreach Action */}
+                                {matchedTutors.length > 0 && session.status === 'Pending' && (
+                                    <Alert 
+                                        severity="success" 
+                                        sx={{ 
+                                            mt: 4,
+                                            backgroundColor: '#ECFDF5',
+                                            border: '1px solid #D1FAE5',
+                                            borderRadius: 2,
+                                        }}
+                                        action={
+                                            <Button 
+                                                variant="contained" 
+                                                disabled={isStartingOutreach}
+                                                onClick={handleStartOutreach}
+                                                startIcon={isStartingOutreach ? 
+                                                    <CircularProgress size={16} color="inherit" /> : 
+                                                    <StartIcon />
+                                                }
+                                                sx={{
+                                                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                                    fontWeight: 600,
+                                                    textTransform: 'none',
+                                                    '&:hover': {
+                                                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                                    },
+                                                }}
+                                            >
+                                                {isStartingOutreach ? 'Starting...' : 'Start Outreach'}
+                                            </Button>
+                                        }
+                                    >
+                                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#111827' }}>
+                                            Ready to Go!
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                            You have a shortlist of {matchedTutors.length} qualified tutor{matchedTutors.length !== 1 ? 's' : ''}. Start automated outreach to contact them.
+                                        </Typography>
+                                    </Alert>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </Grid>
                 </Grid>
-            </Grid>
+            </Container>
         </Box>
     );
 }

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import { Link } from 'react-router-dom';
 import { formatInTimeZone } from 'date-fns-tz';
+import { usePageTitle, updateFavicon } from './hooks/usePageTitle';
+// import { useNotification } from './components/NotificationSystem';
 
   // Import MUI Components
 import { 
@@ -88,6 +90,22 @@ export default function TutorDashboard() {
   const [respondingId, setRespondingId] = useState(null);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Use notification system for better UX (temporarily disabled)
+  // const { notify } = useNotification();
+  const notify = {
+    success: (msg) => setSuccessMessage(msg),
+    error: (msg) => setError(msg),
+    info: (msg) => setSuccessMessage(msg),
+    warning: (msg) => setSuccessMessage(msg),
+  };
+  
+  // Set dynamic page title
+  usePageTitle(profile ? `${profile.full_name || 'Tutor'} Dashboard` : 'Tutor Dashboard');
+  
+  useEffect(() => {
+    updateFavicon('tutor');
+  }, []);
   
   // --- NEW STATE for Waitlist feature ---
   const [joinableSessions, setJoinableSessions] = useState([]);
@@ -612,20 +630,43 @@ export default function TutorDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to submit response');
       
-      // Show success message based on response type
+      // Show smart notifications based on response type
       if (response === 'accepted') {
-        setSuccessMessage('✅ Great! You\'ve accepted this session. We\'ll send you the meeting details shortly.');
+        notify.success(
+          'Session accepted! We\'ll send you meeting details and student information shortly.',
+          { title: 'Session Confirmed', duration: 8000 }
+        );
       } else if (response === 'declined') {
-        setSuccessMessage('Response recorded. We\'ll continue searching for other tutors.');
+        notify.info(
+          'Response recorded. We\'ll continue finding the right match for this student.',
+          { title: 'Response Submitted', duration: 5000 }
+        );
       } else if (response === 'require_different_time') {
-        setSuccessMessage('Request noted. An admin will review the session timing and get back to you.');
+        notify.warning(
+          'Time change request noted. An admin will review and contact you about alternative times.',
+          { title: 'Rescheduling Request', duration: 7000 }
+        );
       }
       
       await fetchAllData(user.id);
       
     } catch (error) {
       console.error('Error responding to request:', error);
-      setError(`Failed to submit response: ${error.message}`);
+      notify.error(
+        `Failed to submit response: ${error.message}`,
+        { 
+          title: 'Response Failed',
+          action: (
+            <Button 
+              size="small" 
+              onClick={() => handleRespondToRequest(attemptId, response)}
+              sx={{ color: 'white' }}
+            >
+              Retry
+            </Button>
+          )
+        }
+      );
     } finally {
       setRespondingId(null);
     }
