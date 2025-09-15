@@ -172,33 +172,16 @@ export default function TutorProfile() {
         setSuccessMessage(''); // Clear any previous messages
 
         try {
-            // Create unique filename with proper extension
+            // Use stable storage path and upsert replace
             const fileExt = file.name.split('.').pop().toLowerCase();
-            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+            const filePath = `tutors/${user.id}/profile.${fileExt}`;
 
-            // Uploading photo with unique filename
-
-            // First, delete any existing photo for this user
-            const existingPhotoPath = profile.profile_photo_url;
-            if (existingPhotoPath) {
-                try {
-                    const existingFileName = existingPhotoPath.split('/').pop();
-                    await supabase.storage
-                        .from('tutor-photos')
-                        .remove([existingFileName]);
-                    // Successfully removed existing photo
-                } catch (deleteError) {
-                    // Could not delete existing photo, continuing with upload
-                    // Continue with upload even if delete fails
-                }
-            }
-
-            // Upload to Supabase Storage
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('tutor-photos')
-                .upload(fileName, file, {
+                .upload(filePath, file, {
                     cacheControl: '3600',
-                    upsert: true
+                    upsert: true,
+                    contentType: file.type
                 });
 
             if (uploadError) {
@@ -217,7 +200,7 @@ export default function TutorProfile() {
             // Get public URL
             const { data: urlData } = supabase.storage
                 .from('tutor-photos')
-                .getPublicUrl(fileName);
+                .getPublicUrl(filePath);
 
             const photoUrl = urlData.publicUrl;
             // Got photo URL
@@ -300,6 +283,10 @@ export default function TutorProfile() {
         'Victoria University',
         'Other'
     ];
+
+    // Graduation year options
+    const currentYear = new Date().getFullYear();
+    const graduationYears = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
     const handleUpdateProfile = async (e) => {
         e.preventDefault();
@@ -577,13 +564,18 @@ export default function TutorProfile() {
                         </Grid>
                         
                         <Grid item xs={12} md={6}>
-                            <TextField
-                                label="Study Year / Graduation Year"
-                                fullWidth
-                                value={profile.study_year || ''}
-                                onChange={(e) => setProfile({ ...profile, study_year: e.target.value })}
-                                placeholder="e.g., 2nd Year, Graduated 2023"
-                            />
+                            <FormControl fullWidth>
+                                <InputLabel>Graduation Year</InputLabel>
+                                <Select
+                                    value={profile.study_year || ''}
+                                    label="Graduation Year"
+                                    onChange={(e) => setProfile({ ...profile, study_year: e.target.value })}
+                                >
+                                    {graduationYears.map((y) => (
+                                        <MenuItem key={y} value={y}>{y}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                         </Grid>
                         
                         <Grid item xs={12} md={6}>
@@ -830,11 +822,26 @@ export default function TutorProfile() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                         <Box>
                             <Typography variant="caption">Start Time</Typography>
-                            <DateTimePicker onChange={(val) => setNewBlockout({...newBlockout, start_time: val})} value={newBlockout.start_time} />
+                            <DateTimePicker 
+                                onChange={(val) => setNewBlockout({...newBlockout, start_time: val})} 
+                                value={newBlockout.start_time}
+                                maxDetail="minute"
+                                disableClock={false}
+                                calendarIcon={null}
+                                clearIcon={null}
+                            />
                         </Box>
                         <Box>
                             <Typography variant="caption">End Time</Typography>
-                            <DateTimePicker onChange={(val) => setNewBlockout({...newBlockout, end_time: val})} value={newBlockout.end_time} />
+                            <DateTimePicker 
+                                onChange={(val) => setNewBlockout({...newBlockout, end_time: val})} 
+                                value={newBlockout.end_time}
+                                maxDetail="minute"
+                                disableClock={false}
+                                calendarIcon={null}
+                                clearIcon={null}
+                                minDate={newBlockout.start_time}
+                            />
                         </Box>
                     </Box>
                     
@@ -863,6 +870,11 @@ export default function TutorProfile() {
                                     <DateTimePicker
                                         onChange={(date) => setNewBlockout(prev => ({ ...prev, recurrence_end_date: date }))}
                                         value={newBlockout.recurrence_end_date}
+                                        maxDetail="minute"
+                                        disableClock={false}
+                                        calendarIcon={null}
+                                        clearIcon={null}
+                                        minDate={newBlockout.start_time}
                                     />
                                 </Box>
                             </Box>

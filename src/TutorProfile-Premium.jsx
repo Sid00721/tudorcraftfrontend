@@ -161,24 +161,15 @@ export default function TutorProfile() {
 
         try {
             const fileExt = file.name.split('.').pop().toLowerCase();
-            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+            const filePath = `tutors/${user.id}/profile.${fileExt}`;
 
-            // Delete existing photo if any
-            if (profile.profile_photo_url) {
-                try {
-                    const existingFileName = profile.profile_photo_url.split('/').pop();
-                    await supabase.storage.from('tutor-photos').remove([existingFileName]);
-                } catch (deleteError) {
-                    console.log('Could not delete existing photo:', deleteError.message);
-                }
-            }
-
-            // Upload new photo
+            // Upload new photo (upsert replace)
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('tutor-photos')
-                .upload(fileName, file, {
+                .upload(filePath, file, {
                     cacheControl: '3600',
-                    upsert: true
+                    upsert: true,
+                    contentType: file.type
                 });
 
             if (uploadError) {
@@ -191,7 +182,7 @@ export default function TutorProfile() {
             // Get public URL
             const { data: urlData } = supabase.storage
                 .from('tutor-photos')
-                .getPublicUrl(fileName);
+                .getPublicUrl(filePath);
 
             const photoUrl = urlData.publicUrl;
 
@@ -484,13 +475,17 @@ export default function TutorProfile() {
                             </Grid>
                             
                             <Grid item xs={12} sm={6}>
-                                <FormField label="Study Year">
-                                    <TextField
+                                <FormField label="Graduation Year">
+                                    <Select
                                         value={profile.study_year || ''}
                                         onChange={(e) => setProfile({ ...profile, study_year: e.target.value })}
                                         fullWidth
-                                        placeholder="e.g., 3rd Year, Graduated 2023"
-                                    />
+                                        displayEmpty
+                                    >
+                                        {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(y => (
+                                            <MenuItem key={y} value={y}>{y}</MenuItem>
+                                        ))}
+                                    </Select>
                                 </FormField>
                             </Grid>
                             

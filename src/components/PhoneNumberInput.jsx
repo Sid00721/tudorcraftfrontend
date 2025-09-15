@@ -89,11 +89,27 @@ export default function PhoneNumberInput({
 
     const handleChange = (event) => {
         const inputValue = event.target.value;
-        const formatted = formatAustralianPhone(inputValue);
-        
+        // Allow free typing/deletion; do not force +61 while editing
+        setDisplayValue(inputValue);
+
+        if (onChange) {
+            onChange({
+                ...event,
+                target: {
+                    ...event.target,
+                    value: inputValue
+                }
+            });
+        }
+    };
+
+    const handleBlur = (event) => {
+        // Format on blur only
+        const formatted = formatAustralianPhone(displayValue);
         setDisplayValue(formatted);
-        
-        // Call parent onChange with the formatted value
+
+        const isValid = formatted ? validateAustralianPhone(formatted) : true;
+
         if (onChange) {
             onChange({
                 ...event,
@@ -103,18 +119,13 @@ export default function PhoneNumberInput({
                 }
             });
         }
-    };
 
-    const handleBlur = (event) => {
-        // Validate on blur and show appropriate helper text
-        const isValid = validateAustralianPhone(displayValue);
-        
         if (otherProps.onBlur) {
             otherProps.onBlur({
                 ...event,
                 target: {
                     ...event.target,
-                    value: displayValue,
+                    value: formatted,
                     validity: { valid: isValid }
                 }
             });
@@ -128,14 +139,14 @@ export default function PhoneNumberInput({
         const digits = displayValue.replace(/\D/g, '');
         if (digits.length === 0) {
             return 'Enter Australian phone number (e.g., 04xx xxx xxx)';
-        } else if (!validateAustralianPhone(displayValue)) {
+        } else if (displayValue.startsWith('+61') && !validateAustralianPhone(displayValue)) {
             return 'Please enter a valid Australian phone number';
         }
         return 'Valid Australian phone number ✓';
     };
 
     // Determine if there's an error
-    const hasError = error || (displayValue.length > 0 && !validateAustralianPhone(displayValue));
+    const hasError = error || (displayValue.startsWith('+61') && displayValue.length > 0 && !validateAustralianPhone(displayValue));
 
     return (
         <TextField
