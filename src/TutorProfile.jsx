@@ -822,25 +822,22 @@ export default function TutorProfile() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
                         <Box>
                             <Typography variant="caption">Start Time</Typography>
-                            <DateTimePicker 
-                                onChange={(val) => setNewBlockout({...newBlockout, start_time: val})} 
-                                value={newBlockout.start_time}
-                                maxDetail="minute"
-                                disableClock={false}
-                                calendarIcon={null}
-                                clearIcon={null}
+                            <TextField
+                                type="datetime-local"
+                                value={format(newBlockout.start_time, "yyyy-MM-dd'T'HH:mm")}
+                                onChange={(e) => setNewBlockout({ ...newBlockout, start_time: new Date(e.target.value) })}
+                                inputProps={{ step: 60 }}
+                                sx={{ minWidth: 240 }}
                             />
                         </Box>
                         <Box>
                             <Typography variant="caption">End Time</Typography>
-                            <DateTimePicker 
-                                onChange={(val) => setNewBlockout({...newBlockout, end_time: val})} 
-                                value={newBlockout.end_time}
-                                maxDetail="minute"
-                                disableClock={false}
-                                calendarIcon={null}
-                                clearIcon={null}
-                                minDate={newBlockout.start_time}
+                            <TextField
+                                type="datetime-local"
+                                value={format(newBlockout.end_time, "yyyy-MM-dd'T'HH:mm")}
+                                onChange={(e) => setNewBlockout({ ...newBlockout, end_time: new Date(e.target.value) })}
+                                inputProps={{ step: 60, min: format(newBlockout.start_time, "yyyy-MM-dd'T'HH:mm") }}
+                                sx={{ minWidth: 240 }}
                             />
                         </Box>
                     </Box>
@@ -867,14 +864,12 @@ export default function TutorProfile() {
                                 
                                 <Box>
                                     <Typography variant="caption">Repeat Until</Typography>
-                                    <DateTimePicker
-                                        onChange={(date) => setNewBlockout(prev => ({ ...prev, recurrence_end_date: date }))}
-                                        value={newBlockout.recurrence_end_date}
-                                        maxDetail="minute"
-                                        disableClock={false}
-                                        calendarIcon={null}
-                                        clearIcon={null}
-                                        minDate={newBlockout.start_time}
+                                    <TextField
+                                        type="datetime-local"
+                                        value={format(newBlockout.recurrence_end_date, "yyyy-MM-dd'T'HH:mm")}
+                                        onChange={(e) => setNewBlockout(prev => ({ ...prev, recurrence_end_date: new Date(e.target.value) }))}
+                                        inputProps={{ step: 60, min: format(newBlockout.start_time, "yyyy-MM-dd'T'HH:mm") }}
+                                        sx={{ minWidth: 240 }}
                                     />
                                 </Box>
                             </Box>

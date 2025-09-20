@@ -106,9 +106,8 @@ const GooglePlacesAutocomplete = ({
           onChange={handleInputChange}
           placeholder={placeholder}
           required={required}
-          error={true}
-          helperText={`Google Maps error: ${loadError}`}
           fullWidth={fullWidth}
+          helperText={helperText || 'Maps not available. Type your suburb manually.'}
         />
       </Box>
     );
