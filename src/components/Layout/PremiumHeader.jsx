@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import {
@@ -17,6 +17,10 @@ import {
   useTheme,
   alpha,
   Chip,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -35,6 +39,27 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Fetch user profile data including photo
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.id) {
+        const { data: profileData } = await supabase
+          .from('tutors')
+          .select('profile_photo_url, full_name')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileData) {
+          setUserProfile(profileData);
+        }
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user?.id]);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -241,22 +266,30 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
           {/* Profile Menu */}
           <IconButton onClick={handleProfileMenuOpen}>
             <Avatar
+              src={userProfile?.profile_photo_url}
               sx={{
                 width: 40,
                 height: 40,
-                background: 'rgba(255, 255, 255, 0.2)',
+                background: userProfile?.profile_photo_url ? 'transparent' : 'rgba(255, 255, 255, 0.2)',
                 backdropFilter: 'blur(10px)',
                 border: '2px solid rgba(255, 255, 255, 0.3)',
                 color: 'white',
                 fontWeight: 600,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                '& img': {
+                  objectFit: 'cover',
+                  borderRadius: '50%',
+                }
               }}
             >
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
+              {!userProfile?.profile_photo_url && (user?.email?.charAt(0).toUpperCase() || 'U')}
             </Avatar>
           </IconButton>
 
           {/* Mobile Menu Button */}
           <IconButton
+            onClick={() => setMobileMenuOpen(true)}
             sx={{
               display: { xs: 'flex', md: 'none' },
               color: 'white',
@@ -294,13 +327,19 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
             </Typography>
           </Box>
           <Divider />
-          <MenuItem onClick={handleProfileMenuClose}>
+          <MenuItem onClick={() => {
+            handleProfileMenuClose();
+            navigate('/tutor/profile');
+          }}>
             <ListItemIcon>
               <AccountIcon />
             </ListItemIcon>
             <ListItemText>Profile Settings</ListItemText>
           </MenuItem>
-          <MenuItem onClick={handleProfileMenuClose}>
+          <MenuItem onClick={() => {
+            handleProfileMenuClose();
+            navigate('/tutor/dashboard');
+          }}>
             <ListItemIcon>
               <SettingsIcon />
             </ListItemIcon>
@@ -350,6 +389,64 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
             </Typography>
           </Box>
         </Menu>
+
+        {/* Mobile Navigation Drawer */}
+        <Drawer
+          anchor="left"
+          open={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+          PaperProps={{
+            sx: {
+              width: 280,
+              background: 'linear-gradient(135deg, #2D5BFF 0%, #FF6B2C 100%)',
+              color: 'white',
+            }
+          }}
+        >
+          <Box sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+              TutorCraft
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8, mb: 3 }}>
+              {userRole === 'admin' ? 'Admin Panel' : 'Tutor Dashboard'}
+            </Typography>
+          </Box>
+          
+          <List>
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <ListItem key={item.path} disablePadding>
+                  <ListItemButton
+                    component={Link}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    sx={{
+                      px: 3,
+                      py: 2,
+                      backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                      <Icon />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={item.label}
+                      primaryTypographyProps={{
+                        fontWeight: isActive ? 600 : 400,
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Drawer>
       </Toolbar>
     </AppBar>
   );

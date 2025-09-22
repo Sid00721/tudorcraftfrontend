@@ -16,6 +16,8 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import SchoolIcon from '@mui/icons-material/School';
+import PersonIcon from '@mui/icons-material/Person';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
@@ -675,17 +677,37 @@ export default function TutorDashboard() {
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Enhanced Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', sm: 'center' }, 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={{ xs: 'h5', sm: 'h4' }} gutterBottom sx={{ mb: { xs: 0, sm: 1 } }}>
           Welcome back, {profile?.full_name || user?.email || 'Tutor'}! 👋
         </Typography>
-        <Stack direction="row" spacing={2}>
-          <Button component={Link} to="/tutor/resources" variant="contained" color="secondary">
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <Button 
+            component={Link} 
+            to="/tutor/resources" 
+            variant="contained" 
+            color="secondary"
+            fullWidth={{ xs: true, sm: false }}
+            startIcon={<SchoolIcon />}
+          >
             Resource Hub
           </Button>
-          <Button component={Link} to="/tutor/profile" variant="contained">
+          <Button 
+            component={Link} 
+            to="/tutor/profile" 
+            variant="contained"
+            fullWidth={{ xs: true, sm: false }}
+            startIcon={<PersonIcon />}
+          >
             Edit Profile
           </Button>
         </Stack>
@@ -834,10 +856,14 @@ export default function TutorDashboard() {
                 <Alert severity="success" sx={{ mb: 2 }}>
                     Great news! These students want to continue with permanent lessons. Please set your available times so we can schedule ongoing sessions.
                 </Alert>
-                <TableContainer component={Paper}>
-                    <Table>
+                <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+                    <Table sx={{ minWidth: { xs: 500, md: 'auto' } }}>
                         <TableHead>
-                            <TableRow><TableCell>Student & Subjects</TableCell><TableCell>Original Trial Time</TableCell><TableCell>Actions</TableCell></TableRow>
+                            <TableRow>
+                                <TableCell>Student & Subjects</TableCell>
+                                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Original Trial Time</TableCell>
+                                <TableCell>Actions</TableCell>
+                            </TableRow>
                         </TableHead>
                         <TableBody>
                             {continuingSessions.map((session) => (
@@ -850,7 +876,7 @@ export default function TutorDashboard() {
                                             {session.trial_lessons.map(l => l.subjects.name).join(', ')}
                                         </Typography>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                                         {session.trial_lessons[0] ? 
                                             new Date(session.trial_lessons[0].lesson_datetime).toLocaleString() : 
                                             'Time not specified'
@@ -875,17 +901,22 @@ export default function TutorDashboard() {
         
         {/* --- MODIFIED: Confirmed Trials Table --- */}
         <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>Your Confirmed Trials</Typography>
-        <TableContainer component={Paper}>
-            <Table>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 500, md: 'auto' } }}>
                 <TableHead>
-                    <TableRow><TableCell>Subjects</TableCell><TableCell>Location</TableCell><TableCell>Status</TableCell><TableCell>Actions</TableCell></TableRow>
+                    <TableRow>
+                        <TableCell>Subjects</TableCell>
+                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Location</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Actions</TableCell>
+                    </TableRow>
                 </TableHead>
                 <TableBody>
                     {confirmedTrials.length > 0 ? (
                         confirmedTrials.map((session) => (
                             <TableRow key={session.id}>
                                 <TableCell>{session.trial_lessons.map(l => l.subjects.name).join(', ')}</TableCell>
-                                <TableCell>
+                                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                                     {(() => {
                                         const locInfo = formatLocationForTutor(session.location, true); // true = has accepted, show full address
                                         return (
@@ -934,10 +965,15 @@ export default function TutorDashboard() {
 
         {/* --- NEW UI SECTION for Waitlists --- */}
         <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>Available Session Waitlists</Typography>
-        <TableContainer component={Paper}>
-            <Table>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: { xs: 500, md: 'auto' } }}>
                 <TableHead>
-                    <TableRow><TableCell>Subjects</TableCell><TableCell>Location</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow>
+                    <TableRow>
+                        <TableCell>Subjects</TableCell>
+                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Location</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                    </TableRow>
                 </TableHead>
                 <TableBody>
                     {joinableSessions.length > 0 ? (
@@ -950,7 +986,7 @@ export default function TutorDashboard() {
                                     <TableCell>
                                         {session.trial_lessons.map(l => l.subjects.name).join(', ')}
                                     </TableCell>
-                                    <TableCell>{session.location}</TableCell>
+                                    <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{session.location}</TableCell>
                                     <TableCell><Chip label={session.status} size="small" /></TableCell>
                                     <TableCell align="right">
                                         <Button

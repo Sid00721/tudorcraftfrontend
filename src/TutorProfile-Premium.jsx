@@ -186,11 +186,15 @@ export default function TutorProfile() {
 
             const photoUrl = urlData.publicUrl;
 
-            // Update profile
+            // Update profile (use single transaction)
             const { error: updateError } = await supabase
                 .from('tutors')
-                .update({ profile_photo_url: photoUrl })
-                .eq('id', user.id);
+                .update({ 
+                    profile_photo_url: photoUrl,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id)
+                .single();
 
             if (updateError) throw updateError;
 

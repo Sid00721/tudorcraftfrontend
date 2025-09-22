@@ -104,7 +104,7 @@ export default function PhoneNumberInput({
     };
 
     const handleBlur = (event) => {
-        // Format on blur only
+        // Always format to +61 format on blur
         const formatted = formatAustralianPhone(displayValue);
         setDisplayValue(formatted);
 

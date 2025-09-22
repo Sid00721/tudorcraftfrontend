@@ -233,13 +233,13 @@ export default function Dashboard() {
 
     return (
         <Box sx={{ backgroundColor: '#FAFBFC', minHeight: '100vh' }}>
-            <Box sx={{ maxWidth: 1200, mx: 'auto', p: 4 }}>
+            <Box sx={{ maxWidth: 1200, mx: 'auto', p: { xs: 2, sm: 3, md: 4 } }}>
                 <Fade in={true} timeout={600}>
                     <Box>
                         {/* Enterprise Page Header */}
-                        <Box sx={{ mb: 6 }}>
+                        <Box sx={{ mb: { xs: 4, md: 6 } }}>
                             <Typography 
-                                variant="h3" 
+                                variant={{ xs: 'h4', md: 'h3' }}
                                 sx={{ 
                                     fontWeight: 700, 
                                     color: '#111827',
@@ -248,12 +248,16 @@ export default function Dashboard() {
                             >
                                 Dashboard
                             </Typography>
-                            <Typography variant="body1" sx={{ color: '#6B7280', mb: 4 }}>
+                            <Typography variant="body1" sx={{ color: '#6B7280', mb: { xs: 2, md: 4 } }}>
                                 Manage your tutoring platform with enterprise-grade tools
                             </Typography>
                             
                             {/* Quick Actions */}
-                            <Stack direction="row" spacing={2} sx={{ mb: 4, flexWrap: 'wrap', gap: 2 }}>
+                            <Stack 
+                                direction={{ xs: 'column', sm: 'row' }} 
+                                spacing={2} 
+                                sx={{ mb: 4, flexWrap: 'wrap', gap: 2 }}
+                            >
                                 <Button 
                                     onClick={() => setShowAddTutorForm(true)}
                                     variant="contained" 
@@ -499,13 +503,13 @@ export default function Dashboard() {
                                 <AddTutorForm onTutorAdded={handleDataAdded} onCancel={() => setShowAddTutorForm(false)} />
                             </Box>
                         )}
-                        <TableContainer>
-                            <Table>
+                        <TableContainer sx={{ overflowX: 'auto' }}>
+                            <Table sx={{ minWidth: { xs: 500, md: 'auto' } }}>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Tutor</TableCell>
-                                        <TableCell>Contact</TableCell>
-                                        <TableCell>Location</TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Contact</TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Location</TableCell>
                                         <TableCell align="center">Actions</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -515,14 +519,23 @@ export default function Dashboard() {
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                     <Avatar
+                                                        src={tutor.profile_photo_url}
                                                         sx={{
                                                             width: 40,
                                                             height: 40,
-                                                            background: 'linear-gradient(135deg, #FF9800 0%, #2196F3 100%)',
+                                                            background: tutor.profile_photo_url ? 'transparent' : 'linear-gradient(135deg, #FF9800 0%, #2196F3 100%)',
                                                             fontWeight: 600,
+                                                            borderRadius: '50%',
+                                                            objectFit: 'cover',
+                                                            '& img': {
+                                                                objectFit: 'cover',
+                                                                borderRadius: '50%',
+                                                                width: '100%',
+                                                                height: '100%',
+                                                            }
                                                         }}
                                                     >
-                                                        {tutor.full_name?.charAt(0)?.toUpperCase() || 'T'}
+                                                        {!tutor.profile_photo_url && (tutor.full_name?.charAt(0)?.toUpperCase() || 'T')}
                                                     </Avatar>
                                                     <Box>
                                                         <Typography variant="subtitle2" fontWeight={600}>
@@ -534,21 +547,25 @@ export default function Dashboard() {
                                                     </Box>
                                                 </Box>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                                                 <Box>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                                                         <EmailIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                                        <Typography variant="body2">{tutor.email}</Typography>
+                                                        <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                                                            {tutor.email}
+                                                        </Typography>
                                                     </Box>
                                                     {tutor.phone_number && (
                                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                             <PhoneIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                                            <Typography variant="body2">{tutor.phone_number}</Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                                                                {tutor.phone_number}
+                                                            </Typography>
                                                         </Box>
                                                     )}
                                                 </Box>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <LocationIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                                                     <Typography variant="body2">
@@ -560,9 +577,13 @@ export default function Dashboard() {
                                                 <Button 
                                                     variant="outlined" 
                                                     size="small" 
-                                                    startIcon={<VisibilityIcon />}
+                                                    startIcon={<VisibilityIcon sx={{ display: { xs: 'none', sm: 'inline' } }} />}
                                                     onClick={() => handleOpenTutorModal(tutor.id)}
-                                                    sx={{ borderRadius: 2 }}
+                                                    sx={{ 
+                                                        borderRadius: 2,
+                                                        minWidth: { xs: '60px', sm: 'auto' },
+                                                        px: { xs: 1, sm: 2 }
+                                                    }}
                                                 >
                                                     View Profile
                                                 </Button>
@@ -595,13 +616,13 @@ export default function Dashboard() {
                                 <AddTrialRequestForm onTrialRequestAdded={handleDataAdded} onCancel={() => setShowAddRequestForm(false)} />
                             </Box>
                         )}
-                        <TableContainer>
-                            <Table>
+                        <TableContainer sx={{ overflowX: 'auto' }}>
+                            <Table sx={{ minWidth: { xs: 600, md: 'auto' } }}>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Parent & Student</TableCell>
-                                        <TableCell>Subjects</TableCell>
-                                        <TableCell>Location</TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Subjects</TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Location</TableCell>
                                         <TableCell>Status</TableCell>
                                         <TableCell align="center">Actions</TableCell>
                                     </TableRow>
@@ -619,7 +640,7 @@ export default function Dashboard() {
                                                     </Typography>
                                                 </Box>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                                                 <Stack direction="row" spacing={1} flexWrap="wrap">
                                                     {session.trial_lessons && session.trial_lessons.length > 0 ? (
                                                         session.trial_lessons.map(lesson => (
@@ -639,7 +660,7 @@ export default function Dashboard() {
                                                     )}
                                                 </Stack>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <LocationIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                                                     <Typography variant="body2">{session.location}</Typography>
@@ -658,8 +679,12 @@ export default function Dashboard() {
                                                     to={`/session/${session.id}`} 
                                                     variant="outlined" 
                                                     size="small"
-                                                    startIcon={<VisibilityIcon />}
-                                                    sx={{ borderRadius: 2 }}
+                                                    startIcon={<VisibilityIcon sx={{ display: { xs: 'none', sm: 'inline' } }} />}
+                                                    sx={{ 
+                                                        borderRadius: 2,
+                                                        minWidth: { xs: '80px', sm: 'auto' },
+                                                        px: { xs: 1, sm: 2 }
+                                                    }}
                                                 >
                                                     View Details
                                                 </Button>
@@ -701,16 +726,25 @@ export default function Dashboard() {
                                     <Grid size={{ xs: 12, md: 4 }}>
                                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 2 }}>
                                             <Avatar
+                                                src={selectedTutor.profile_photo_url}
                                                 sx={{
                                                     width: 100,
                                                     height: 100,
                                                     fontSize: 36,
                                                     fontWeight: 700,
-                                                    background: 'linear-gradient(135deg, #FF9800 0%, #2196F3 100%)',
+                                                    background: selectedTutor.profile_photo_url ? 'transparent' : 'linear-gradient(135deg, #FF9800 0%, #2196F3 100%)',
                                                     mb: 2,
+                                                    borderRadius: '50%',
+                                                    objectFit: 'cover',
+                                                    '& img': {
+                                                        objectFit: 'cover',
+                                                        borderRadius: '50%',
+                                                        width: '100%',
+                                                        height: '100%',
+                                                    }
                                                 }}
                                             >
-                                                {selectedTutor.full_name?.charAt(0)?.toUpperCase() || 'T'}
+                                                {!selectedTutor.profile_photo_url && (selectedTutor.full_name?.charAt(0)?.toUpperCase() || 'T')}
                                             </Avatar>
                                             <Typography variant="h6" fontWeight={600} textAlign="center">
                                                 {selectedTutor.full_name}

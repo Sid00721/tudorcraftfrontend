@@ -4,6 +4,7 @@ import DateTimePicker from 'react-datetime-picker';
 import { format } from 'date-fns';
 import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
 import PhoneNumberInput from './components/PhoneNumberInput';
+import PhotoCropModal from './components/PhotoCropModal';
 import { usePageTitle, updateFavicon } from './hooks/usePageTitle';
 
 // Import MUI Components
@@ -43,6 +44,7 @@ export default function TutorProfile() {
     // Photo upload state
     const [photoUploading, setPhotoUploading] = useState(false);
     const [photoPreview, setPhotoPreview] = useState(null);
+    const [isPhotoCropModalOpen, setIsPhotoCropModalOpen] = useState(false);
     
     // --- IMPROVED Subject Management State ---
     const [allSubjects, setAllSubjects] = useState([]);
@@ -150,42 +152,26 @@ export default function TutorProfile() {
         return allSubjects.filter(s => selectedSubjects.has(s.id)).map(s => s.name);
     };
 
-    // Enhanced photo upload handler with better error handling
-    const handlePhotoUpload = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        // Validate file type
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!validTypes.includes(file.type.toLowerCase())) {
-            alert('Please select a valid image file (JPG, PNG, GIF, or WebP).');
-            return;
-        }
-
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert(`File size is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please select an image smaller than 5MB.`);
-            return;
-        }
+    // Enhanced photo upload handler with cropping support
+    const handlePhotoSave = async (croppedFile) => {
+        if (!croppedFile) return;
 
         setPhotoUploading(true);
-        setSuccessMessage(''); // Clear any previous messages
+        setSuccessMessage('');
 
         try {
             // Use stable storage path and upsert replace
-            const fileExt = file.name.split('.').pop().toLowerCase();
-            const filePath = `tutors/${user.id}/profile.${fileExt}`;
+            const filePath = `tutors/${user.id}/profile.jpg`;
 
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('tutor-photos')
-                .upload(filePath, file, {
+                .upload(filePath, croppedFile, {
                     cacheControl: '3600',
                     upsert: true,
-                    contentType: file.type
+                    contentType: 'image/jpeg'
                 });
 
             if (uploadError) {
-                // Upload failed
                 if (uploadError.message.includes('not found')) {
                     throw new Error('Photo storage bucket not found. Please contact support to set up photo storage.');
                 } else if (uploadError.message.includes('policy')) {
@@ -195,24 +181,24 @@ export default function TutorProfile() {
                 }
             }
 
-            // Upload successful
-
             // Get public URL
             const { data: urlData } = supabase.storage
                 .from('tutor-photos')
                 .getPublicUrl(filePath);
 
-            const photoUrl = urlData.publicUrl;
-            // Got photo URL
+            const photoUrl = urlData.publicUrl + '?' + Date.now(); // Cache bust
 
             // Update profile with photo URL
             const { error: updateError } = await supabase
                 .from('tutors')
-                .update({ profile_photo_url: photoUrl })
-                .eq('id', user.id);
+                .update({ 
+                    profile_photo_url: photoUrl,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id)
+                .single();
 
             if (updateError) {
-                // Database update failed
                 throw updateError;
             }
 
@@ -220,25 +206,10 @@ export default function TutorProfile() {
             setProfile(prev => ({ ...prev, profile_photo_url: photoUrl }));
             setPhotoPreview(photoUrl);
             setSuccessMessage('✅ Profile photo updated successfully!');
-            
-            // Clear the file input
-            event.target.value = '';
 
         } catch (error) {
-            // Error uploading photo
-            let errorMessage = 'Error uploading photo: ';
-            
-            if (error.message.includes('not found')) {
-                errorMessage += 'Storage bucket not found. Please contact support.';
-            } else if (error.message.includes('policy')) {
-                errorMessage += 'Permission denied. Please make sure you are logged in.';
-            } else if (error.message.includes('size')) {
-                errorMessage += 'File too large. Please select an image smaller than 5MB.';
-            } else {
-                errorMessage += error.message || 'Unknown error occurred.';
-            }
-            
-            alert(errorMessage);
+            console.error('Photo upload error details:', error);
+            alert('Error uploading photo: ' + (error.message || 'Unknown error occurred.'));
         } finally {
             setPhotoUploading(false);
         }
@@ -295,8 +266,8 @@ export default function TutorProfile() {
         
         // Validate bio word count
         const bioWordCount = getWordCount(profile.teaching_bio);
-        if (profile.teaching_bio && bioWordCount > 50) {
-            alert('Teaching bio must be 50 words or less. Current count: ' + bioWordCount);
+        if (profile.teaching_bio && bioWordCount < 50) {
+            alert('Teaching bio must be at least 50 words. Current count: ' + bioWordCount);
             setSaving(false);
             return;
         }
@@ -390,8 +361,8 @@ export default function TutorProfile() {
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
 
     return (
-        <Box sx={{ p: 3, maxWidth: 900, margin: 'auto' }}>
-            <Typography variant="h4" gutterBottom>My Profile</Typography>
+        <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 900, margin: 'auto' }}>
+            <Typography variant={{ xs: 'h5', md: 'h4' }} gutterBottom>My Profile</Typography>
             <form onSubmit={handleUpdateProfile}>
                 {/* Approval Status Alert */}
                 {profile.approval_status && (
@@ -425,8 +396,8 @@ export default function TutorProfile() {
                     </Alert>
                 )}
 
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>Contact Information</Typography>
+                <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+                    <Typography variant={{ xs: 'subtitle1', md: 'h6' }} gutterBottom>Contact Information</Typography>
                     <TextField label="Email" value={user?.email || ''} fullWidth disabled sx={{ mb: 2 }} />
                     <GooglePlacesAutocomplete
                         value={profile.suburb}
@@ -466,8 +437,8 @@ export default function TutorProfile() {
                 </Paper>
 
                 {/* Profile Information Section */}
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>Profile Information</Typography>
+                <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+                    <Typography variant={{ xs: 'subtitle1', md: 'h6' }} gutterBottom>Profile Information</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                         This information will be shared with parents when you accept a trial session.
                     </Typography>
@@ -475,38 +446,37 @@ export default function TutorProfile() {
                     {/* Profile Photo */}
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="subtitle1" gutterBottom>Profile Photo</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                             <Avatar
                                 src={photoPreview}
                                 sx={{ 
-                                    width: 100, 
-                                    height: 100,
+                                    width: { xs: 80, sm: 100 }, 
+                                    height: { xs: 80, sm: 100 },
                                     border: '3px solid',
-                                    borderColor: 'primary.main'
+                                    borderColor: 'primary.main',
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    '& img': {
+                                        objectFit: 'cover',
+                                        borderRadius: '50%',
+                                        width: '100%',
+                                        height: '100%',
+                                    }
                                 }}
                             >
-                                <PersonIcon sx={{ fontSize: 40 }} />
+                                <PersonIcon sx={{ fontSize: { xs: 32, sm: 40 } }} />
                             </Avatar>
-                            <Box>
-                                <input
-                                    accept="image/*"
-                                    style={{ display: 'none' }}
-                                    id="photo-upload"
-                                    type="file"
-                                    onChange={handlePhotoUpload}
-                                />
-                                <label htmlFor="photo-upload">
-                                    <Button
-                                        variant="outlined"
-                                        component="span"
-                                        startIcon={photoUploading ? <CircularProgress size={20} /> : <PhotoCameraIcon />}
-                                        disabled={photoUploading}
-                                    >
-                                        {photoUploading ? 'Uploading...' : 'Upload Photo'}
-                                    </Button>
-                                </label>
+                            <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={photoUploading ? <CircularProgress size={20} /> : <PhotoCameraIcon />}
+                                    disabled={photoUploading}
+                                    onClick={() => setIsPhotoCropModalOpen(true)}
+                                >
+                                    {photoUploading ? 'Uploading...' : (photoPreview ? 'Edit Photo' : 'Upload Photo')}
+                                </Button>
                                 <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
-                                    Max 5MB. JPG, PNG, GIF, or WebP format.
+                                    Max 5MB. JPG, PNG, or WebP format. Click to crop and position.
                                 </Typography>
                                 {photoUploading && (
                                     <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'info.main' }}>
@@ -527,8 +497,8 @@ export default function TutorProfile() {
                             value={profile.teaching_bio || ''}
                             onChange={(e) => setProfile({ ...profile, teaching_bio: e.target.value })}
                             placeholder="Share why you love teaching and what motivates you to help students succeed..."
-                            helperText={`${getWordCount(profile.teaching_bio || '')} / 50 words maximum`}
-                            error={getWordCount(profile.teaching_bio || '') > 50}
+                                helperText={`${getWordCount(profile.teaching_bio || '')} / 50 words minimum`}
+                                error={profile.teaching_bio && getWordCount(profile.teaching_bio || '') < 50}
                         />
                     </Box>
 
@@ -904,6 +874,14 @@ export default function TutorProfile() {
                         )}
                     </Button>
                 </Paper>
+
+                {/* Photo Crop Modal */}
+                <PhotoCropModal
+                    open={isPhotoCropModalOpen}
+                    onClose={() => setIsPhotoCropModalOpen(false)}
+                    onSave={handlePhotoSave}
+                    currentPhotoUrl={photoPreview}
+                />
                 
                 <Button type="submit" variant="contained" sx={{ mt: 1 }} disabled={saving}>
                     {saving ? <CircularProgress size={24} /> : 'Save Full Profile'}
