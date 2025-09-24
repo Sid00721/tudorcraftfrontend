@@ -24,6 +24,7 @@ const MessageHistory = lazy(() => import('./MessageHistory'));
 const CancellationAnalysis = lazy(() => import('./CancellationAnalysis'));
 const RescheduleManager = lazy(() => import('./RescheduleManager'));
 const TutorApprovalManager = lazy(() => import('./TutorApprovalManager'));
+const TutorPerformance = lazy(() => import('./TutorPerformance'));
 
 // Premium Enterprise Loading Component
 const PremiumLoader = () => (
@@ -242,6 +243,7 @@ export default function App() {
                             <Route path="/admin/cancellations" element={<CancellationAnalysis />} />
                             <Route path="/admin/reschedules" element={<RescheduleManager />} />
                             <Route path="/admin/approvals" element={<TutorApprovalManager />} />
+                            <Route path="/admin/performance" element={<TutorPerformance />} />
                         </Route>
 
                         {/* Tutor Routes */}

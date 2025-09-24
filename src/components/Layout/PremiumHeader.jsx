@@ -31,6 +31,13 @@ import {
   AccountCircle as AccountIcon,
   Notifications as NotificationsIcon,
   Menu as MenuIcon,
+  Assessment as AssessmentIcon,
+  BarChart as BarChartIcon,
+  Schedule as ScheduleIcon,
+  Message as MessageIcon,
+  FolderOpen as FolderOpenIcon,
+  MoreHoriz as MoreIcon,
+  KeyboardArrowDown as ArrowDownIcon,
 } from '@mui/icons-material';
 
 const PremiumHeader = ({ user, userRole = 'admin' }) => {
@@ -41,6 +48,7 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState(null);
 
   // Fetch user profile data including photo
   useEffect(() => {
@@ -102,18 +110,24 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
     return 'TutorCraft';
   };
 
-  const navigationItems = userRole === 'admin' ? [
-    { label: 'Dashboard', path: '/', icon: DashboardIcon },
-    { label: 'Approvals', path: '/admin/approvals', icon: PersonIcon },
-    { label: 'Resources', path: '/admin/resources', icon: SchoolIcon },
-    { label: 'Messages', path: '/admin/messages', icon: NotificationsIcon },
-    { label: 'Analytics', path: '/admin/cancellations', icon: SettingsIcon },
-    { label: 'Reschedules', path: '/admin/reschedules', icon: SettingsIcon },
+  const allNavigationItems = userRole === 'admin' ? [
+    { label: 'Dashboard', path: '/', icon: DashboardIcon, priority: 1 },
+    { label: 'Approvals', path: '/admin/approvals', icon: PersonIcon, priority: 2 },
+    { label: 'Performance', path: '/admin/performance', icon: BarChartIcon, priority: 3 },
+    { label: 'Resources', path: '/admin/resources', icon: FolderOpenIcon, priority: 4 },
+    { label: 'Messages', path: '/admin/messages', icon: MessageIcon, priority: 5 },
+    { label: 'Analytics', path: '/admin/cancellations', icon: AssessmentIcon, priority: 6 },
+    { label: 'Reschedules', path: '/admin/reschedules', icon: ScheduleIcon, priority: 7 },
   ] : [
-    { label: 'Dashboard', path: '/tutor/dashboard', icon: DashboardIcon },
-    { label: 'Profile', path: '/tutor/profile', icon: PersonIcon },
-    { label: 'Resources', path: '/tutor/resources', icon: SchoolIcon },
+    { label: 'Dashboard', path: '/tutor/dashboard', icon: DashboardIcon, priority: 1 },
+    { label: 'Profile', path: '/tutor/profile', icon: PersonIcon, priority: 2 },
+    { label: 'Resources', path: '/tutor/resources', icon: SchoolIcon, priority: 3 },
   ];
+
+  // Split navigation items - show first 4 in desktop nav, rest in "More" dropdown
+  const primaryNavItems = allNavigationItems.slice(0, 4);
+  const secondaryNavItems = allNavigationItems.slice(4);
+  const hasSecondaryItems = secondaryNavItems.length > 0;
 
   return (
     <AppBar 
@@ -193,8 +207,10 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
           gap: 1, 
           flex: 1,
           justifyContent: 'center',
+          alignItems: 'center',
         }}>
-          {navigationItems.map((item) => {
+          {/* Primary Navigation Items */}
+          {primaryNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             
@@ -227,6 +243,77 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
               </Button>
             );
           })}
+
+          {/* More Menu for Secondary Items */}
+          {hasSecondaryItems && (
+            <>
+              <Button
+                onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
+                endIcon={<ArrowDownIcon />}
+                sx={{
+                  color: 'white',
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  background: secondaryNavItems.some(item => location.pathname === item.path) ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                  backdropFilter: secondaryNavItems.some(item => location.pathname === item.path) ? 'blur(10px)' : 'none',
+                  border: secondaryNavItems.some(item => location.pathname === item.path) ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent',
+                  '&:hover': {
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    transform: 'translateY(-1px)',
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                More
+              </Button>
+              <Menu
+                anchorEl={moreMenuAnchor}
+                open={Boolean(moreMenuAnchor)}
+                onClose={() => setMoreMenuAnchor(null)}
+                PaperProps={{
+                  sx: {
+                    background: 'linear-gradient(135deg, #2D5BFF 0%, #FF6B2C 100%)',
+                    color: 'white',
+                    backdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    mt: 1,
+                  }
+                }}
+              >
+                {secondaryNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  
+                  return (
+                    <MenuItem
+                      key={item.path}
+                      component={Link}
+                      to={item.path}
+                      onClick={() => setMoreMenuAnchor(null)}
+                      sx={{
+                        background: isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                        '&:hover': {
+                          background: 'rgba(255, 255, 255, 0.15)',
+                        },
+                        px: 3,
+                        py: 1.5,
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                        <Icon />
+                      </ListItemIcon>
+                      <ListItemText primary={item.label} />
+                    </MenuItem>
+                  );
+                })}
+              </Menu>
+            </>
+          )}
         </Box>
 
         {/* Right Side Actions */}
@@ -413,7 +500,7 @@ const PremiumHeader = ({ user, userRole = 'admin' }) => {
           </Box>
           
           <List>
-            {navigationItems.map((item) => {
+            {allNavigationItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               
