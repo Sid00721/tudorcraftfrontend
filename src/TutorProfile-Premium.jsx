@@ -95,14 +95,32 @@ export default function TutorProfile() {
     ];
 
     const fetchData = useCallback(async (userId) => {
-        // Fetch profile and selected subjects
-        const { data: profileData } = await supabase.from('tutors').select('*, subjects(id)').eq('id', userId).single();
-        if (profileData) {
+        // Fetch profile data
+        const { data: profileData, error: profileError } = await supabase
+            .from('tutors')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+        if (profileError) {
+            console.error('Error fetching profile:', profileError);
+        } else if (profileData) {
             setProfile(profileData);
-            setSelectedSubjects(new Set(profileData.subjects?.map(s => s.id) || []));
             if (profileData.profile_photo_url) {
                 setPhotoPreview(profileData.profile_photo_url);
             }
+        }
+        
+        // Fetch tutor's selected subjects separately
+        const { data: tutorSubjects, error: subjectsError } = await supabase
+            .from('tutor_subjects')
+            .select('subject_id')
+            .eq('tutor_id', userId);
+            
+        if (subjectsError) {
+            console.error('Error fetching tutor subjects:', subjectsError);
+        } else if (tutorSubjects) {
+            setSelectedSubjects(new Set(tutorSubjects.map(s => s.subject_id)));
         }
         
         // Fetch all subjects
@@ -221,10 +239,10 @@ export default function TutorProfile() {
         setSuccessMessage('');
 
         try {
-            // Validate bio word count
-            const wordCount = getWordCount(profile.teaching_bio || '');
-            if (wordCount < 40 || wordCount > 50) {
-                alert('Teaching bio must be between 40-50 words. Current count: ' + wordCount);
+            // Validate bio character count (database constraint requires 200+ chars)
+            const bioCharCount = (profile.teaching_bio || '').length;
+            if (bioCharCount < 200) {
+                alert('Teaching bio must be at least 200 characters. Current count: ' + bioCharCount);
                 setSaving(false);
                 return;
             }
@@ -246,17 +264,24 @@ export default function TutorProfile() {
                 degree: profile.degree,
                 study_year: profile.study_year,
                 atar: profile.atar ? parseFloat(profile.atar) : null,
-                full_name: profile.full_name
+                full_name: profile.full_name || ''
             }).eq('id', user.id);
             
             // Update subjects
-            await supabase.from('tutor_subjects').delete().eq('tutor_id', user.id);
+            const { error: deleteError } = await supabase.from('tutor_subjects').delete().eq('tutor_id', user.id);
+            if (deleteError) {
+                throw deleteError;
+            }
+            
             const newSubjectLinks = Array.from(selectedSubjects).map(subjectId => ({ 
                 tutor_id: user.id, 
                 subject_id: subjectId 
             }));
             if (newSubjectLinks.length > 0) {
-                await supabase.from('tutor_subjects').insert(newSubjectLinks);
+                const { error: insertError } = await supabase.from('tutor_subjects').insert(newSubjectLinks);
+                if (insertError) {
+                    throw insertError;
+                }
             }
             
             setSuccessMessage('✅ Profile updated successfully!');
@@ -429,7 +454,7 @@ export default function TutorProfile() {
                         {/* Teaching Bio */}
                         <FormField 
                             label="Why I Teach" 
-                            description="A brief explanation of your teaching motivation (40-50 words)"
+                            description="A detailed explanation of your teaching motivation and approach (minimum 200 characters)"
                             required
                         >
                             <TextField
@@ -438,12 +463,9 @@ export default function TutorProfile() {
                                 fullWidth
                                 value={profile.teaching_bio || ''}
                                 onChange={(e) => setProfile({ ...profile, teaching_bio: e.target.value })}
-                                placeholder="Explain why you love teaching and what drives your passion for education..."
-                                helperText={`Word count: ${getWordCount(profile.teaching_bio || '')} / 40-50 words`}
-                                error={(() => {
-                                    const count = getWordCount(profile.teaching_bio || '');
-                                    return count > 0 && (count < 40 || count > 50);
-                                })()}
+                                placeholder="Explain why you love teaching and what drives your passion for education. Be specific about your teaching approach, methods, and what makes you an effective tutor. Share your experience and philosophy..."
+                                helperText={`Character count: ${(profile.teaching_bio || '').length} / 200 minimum`}
+                                error={(profile.teaching_bio || '').length > 0 && (profile.teaching_bio || '').length < 200}
                             />
                         </FormField>
 

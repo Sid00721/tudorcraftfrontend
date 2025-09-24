@@ -30,6 +30,7 @@ export default function TutorProfile() {
     const [successMessage, setSuccessMessage] = useState('');
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState({ 
+        full_name: '',
         suburb: '', 
         phone_number: '', 
         accepts_short_face_to_face_trials: false,
@@ -74,15 +75,33 @@ export default function TutorProfile() {
     }, []);
 
     const fetchData = useCallback(async (userId) => {
-        // Fetch profile and selected subjects
-        const { data: profileData } = await supabase.from('tutors').select('*, subjects(id)').eq('id', userId).single();
-        if (profileData) {
+        // Fetch profile data
+        const { data: profileData, error: profileError } = await supabase
+            .from('tutors')
+            .select('*')
+            .eq('id', userId)
+            .single();
+            
+        if (profileError) {
+            console.error('Error fetching profile:', profileError);
+        } else if (profileData) {
             setProfile(profileData);
-            setSelectedSubjects(new Set(profileData.subjects.map(s => s.id)));
             // Set photo preview if profile photo exists
             if (profileData.profile_photo_url) {
                 setPhotoPreview(profileData.profile_photo_url);
             }
+        }
+        
+        // Fetch tutor's selected subjects separately
+        const { data: tutorSubjects, error: subjectsError } = await supabase
+            .from('tutor_subjects')
+            .select('subject_id')
+            .eq('tutor_id', userId);
+            
+        if (subjectsError) {
+            console.error('Error fetching tutor subjects:', subjectsError);
+        } else if (tutorSubjects) {
+            setSelectedSubjects(new Set(tutorSubjects.map(s => s.subject_id)));
         }
         
         // Fetch all subjects (flattened structure for better UX)
@@ -264,41 +283,68 @@ export default function TutorProfile() {
         setSaving(true);
         setSuccessMessage('');
         
-        // Validate bio word count
-        const bioWordCount = getWordCount(profile.teaching_bio);
-        if (profile.teaching_bio && bioWordCount < 50) {
-            alert('Teaching bio must be at least 50 words. Current count: ' + bioWordCount);
-            setSaving(false);
-            return;
-        }
+        try {
+            // Validate required fields
+            if (!profile.full_name?.trim()) {
+                alert('Full name is required');
+                setSaving(false);
+                return;
+            }
+            
+            // Validate bio character count (database constraint requires 200+ chars)
+            const bioCharCount = (profile.teaching_bio || '').length;
+            if (profile.teaching_bio && bioCharCount < 200) {
+                alert('Teaching bio must be at least 200 characters. Current count: ' + bioCharCount);
+                setSaving(false);
+                return;
+            }
 
-        // Validate ATAR if provided
-        if (profile.atar && (profile.atar < 0 || profile.atar > 99.95)) {
-            alert('ATAR must be between 0 and 99.95');
+            // Validate ATAR if provided
+            if (profile.atar && (profile.atar < 0 || profile.atar > 99.95)) {
+                alert('ATAR must be between 0 and 99.95');
+                setSaving(false);
+                return;
+            }
+            
+            // Update profile including all required fields
+            const { error: updateError } = await supabase.from('tutors').update({ 
+                full_name: profile.full_name.trim(),
+                suburb: profile.suburb, 
+                phone_number: profile.phone_number,
+                accepts_short_face_to_face_trials: profile.accepts_short_face_to_face_trials,
+                teaching_bio: profile.teaching_bio,
+                university: profile.university,
+                degree: profile.degree,
+                study_year: profile.study_year,
+                atar: profile.atar ? parseFloat(profile.atar) : null,
+                updated_at: new Date().toISOString()
+            }).eq('id', user.id);
+            
+            if (updateError) {
+                throw updateError;
+            }
+            
+            // Update subjects
+            const { error: deleteError } = await supabase.from('tutor_subjects').delete().eq('tutor_id', user.id);
+            if (deleteError) {
+                throw deleteError;
+            }
+            
+            const newSubjectLinks = Array.from(selectedSubjects).map(subjectId => ({ tutor_id: user.id, subject_id: subjectId }));
+            if (newSubjectLinks.length > 0) {
+                const { error: insertError } = await supabase.from('tutor_subjects').insert(newSubjectLinks);
+                if (insertError) {
+                    throw insertError;
+                }
+            }
+            
+            setSuccessMessage('✅ Profile updated successfully!');
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            alert('Error updating profile: ' + (error.message || 'Unknown error occurred. Please try again.'));
+        } finally {
             setSaving(false);
-            return;
         }
-        
-        // Update profile including all new fields
-        await supabase.from('tutors').update({ 
-            suburb: profile.suburb, 
-            phone_number: profile.phone_number,
-            accepts_short_face_to_face_trials: profile.accepts_short_face_to_face_trials,
-            teaching_bio: profile.teaching_bio,
-            university: profile.university,
-            degree: profile.degree,
-            study_year: profile.study_year,
-            atar: profile.atar ? parseFloat(profile.atar) : null
-        }).eq('id', user.id);
-        
-        // Update subjects
-        await supabase.from('tutor_subjects').delete().eq('tutor_id', user.id);
-        const newSubjectLinks = Array.from(selectedSubjects).map(subjectId => ({ tutor_id: user.id, subject_id: subjectId }));
-        if (newSubjectLinks.length > 0) {
-            await supabase.from('tutor_subjects').insert(newSubjectLinks);
-        }
-        setSuccessMessage('Profile updated successfully!');
-        setSaving(false);
     };
 
     // --- ENHANCED HANDLERS for Availability with Recurring Support ---
@@ -399,6 +445,15 @@ export default function TutorProfile() {
                 <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
                     <Typography variant={{ xs: 'subtitle1', md: 'h6' }} gutterBottom>Contact Information</Typography>
                     <TextField label="Email" value={user?.email || ''} fullWidth disabled sx={{ mb: 2 }} />
+                    <TextField 
+                        label="Full Name" 
+                        value={profile.full_name || ''} 
+                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                        fullWidth 
+                        required 
+                        sx={{ mb: 2 }}
+                        helperText="Your full name as it will appear to parents"
+                    />
                     <GooglePlacesAutocomplete
                         value={profile.suburb}
                         onChange={(address) => setProfile({ ...profile, suburb: address })}
@@ -445,7 +500,7 @@ export default function TutorProfile() {
                     
                     {/* Profile Photo */}
                     <Box sx={{ mb: 3 }}>
-                        <Typography variant="subtitle1" gutterBottom>Profile Photo</Typography>
+                        <Typography variant="subtitle1" gutterBottom>A Photo Of Yourself</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                             <Avatar
                                 src={photoPreview}
@@ -496,9 +551,9 @@ export default function TutorProfile() {
                             fullWidth
                             value={profile.teaching_bio || ''}
                             onChange={(e) => setProfile({ ...profile, teaching_bio: e.target.value })}
-                            placeholder="Share why you love teaching and what motivates you to help students succeed..."
-                                helperText={`${getWordCount(profile.teaching_bio || '')} / 50 words minimum`}
-                                error={profile.teaching_bio && getWordCount(profile.teaching_bio || '') < 50}
+                            placeholder="Share why you love teaching and what motivates you to help students succeed. Be detailed and specific about your teaching approach, experience, and passion for education..."
+                                helperText={`${(profile.teaching_bio || '').length} / 200 characters minimum`}
+                                error={profile.teaching_bio && (profile.teaching_bio || '').length < 200}
                         />
                     </Box>
 
