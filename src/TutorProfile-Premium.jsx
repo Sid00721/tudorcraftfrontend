@@ -239,9 +239,9 @@ export default function TutorProfile() {
         setSuccessMessage('');
 
         try {
-            // Validate bio character count (database constraint requires 200+ chars)
+            // Validate bio character count (database constraint requires 200+ chars if provided)
             const bioCharCount = (profile.teaching_bio || '').length;
-            if (bioCharCount < 200) {
+            if (profile.teaching_bio && bioCharCount < 200) {
                 alert('Teaching bio must be at least 200 characters. Current count: ' + bioCharCount);
                 setSaving(false);
                 return;
@@ -255,8 +255,8 @@ export default function TutorProfile() {
             }
             
             // Update profile
-            await supabase.from('tutors').update({ 
-                suburb: profile.suburb, 
+            const { error: updateError } = await supabase.from('tutors').update({
+                suburb: profile.suburb,
                 phone_number: profile.phone_number,
                 accepts_short_face_to_face_trials: profile.accepts_short_face_to_face_trials,
                 teaching_bio: profile.teaching_bio,
@@ -264,8 +264,13 @@ export default function TutorProfile() {
                 degree: profile.degree,
                 study_year: profile.study_year,
                 atar: profile.atar ? parseFloat(profile.atar) : null,
-                full_name: profile.full_name || ''
+                full_name: profile.full_name || '',
+                updated_at: new Date().toISOString()
             }).eq('id', user.id);
+
+            if (updateError) {
+                throw updateError;
+            }
             
             // Update subjects
             const { error: deleteError } = await supabase.from('tutor_subjects').delete().eq('tutor_id', user.id);
