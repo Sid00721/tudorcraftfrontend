@@ -279,7 +279,7 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
             const { data: sessionData, error: sessionError } = await supabase
                 .from('trial_sessions')
                 .insert([sessionDetails])
-                .select()
+                .select('id, parent_name, parent_email, parent_phone, location, created_at')
                 .single();
 
             if (sessionError) throw sessionError;
