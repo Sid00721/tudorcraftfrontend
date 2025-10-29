@@ -43,7 +43,7 @@ export default function SessionDetails() {
         setLoading(true);
         const { data, error } = await supabase
             .from('trial_sessions')
-            .select('*, trial_lessons(*, subjects(name)), assigned_tutor:assigned_tutor_id(full_name)')
+            .select('*, trial_lessons(id, session_id, student_name, student_grade, subject_id, lesson_datetime, lesson_timezone, duration_minutes, video_meeting_link, diagnostic_assessment, subjects(name)), assigned_tutor:assigned_tutor_id(full_name)')
             .eq('id', sessionId)
             .single();
 

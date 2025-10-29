@@ -174,7 +174,7 @@ export default function Dashboard() {
 
             const { data: sessionsData, error: sessionsError } = await supabase
                 .from('trial_sessions')
-                .select('*, trial_lessons(*, subjects(name))')
+                .select('*, trial_lessons(id, session_id, student_name, student_grade, subject_id, lesson_datetime, lesson_timezone, duration_minutes, video_meeting_link, subjects(name))')
                 .order('created_at', { ascending: false });
 
             if (sessionsError) console.error("Error fetching trial sessions:", sessionsError);
