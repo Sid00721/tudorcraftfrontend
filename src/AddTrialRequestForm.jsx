@@ -5,8 +5,8 @@ import { supabase } from "./supabaseClient";
 const sanitizeForSupabase = (obj) => {
     const sanitized = {};
     Object.entries(obj).forEach(([key, value]) => {
-        // Skip undefined, null, empty strings, and empty objects
-        if (value === undefined || value === null || value === '') {
+        // Skip undefined key names, undefined, null, empty strings, and empty objects
+        if (key === 'undefined' || value === undefined || value === null || value === '') {
             return;
         }
         // Convert Date objects to ISO strings
