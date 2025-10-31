@@ -6,15 +6,16 @@ import PhoneIcon from '@mui/icons-material/Phone';
  * Australian phone number input component with automatic +61 formatting
  * Supports both mobile (04xx xxx xxx) and landline formats
  */
-export default function PhoneNumberInput({ 
-    value = '', 
-    onChange, 
+export default function PhoneNumberInput({
+    value = '',
+    onChange,
+    name,
     label = 'Phone Number',
     required = false,
     fullWidth = true,
     error = false,
     helperText = '',
-    ...otherProps 
+    ...otherProps
 }) {
     const [displayValue, setDisplayValue] = useState(value);
 
@@ -151,6 +152,7 @@ export default function PhoneNumberInput({
     return (
         <TextField
             {...otherProps}
+            name={name}
             label={label}
             value={displayValue}
             onChange={handleChange}

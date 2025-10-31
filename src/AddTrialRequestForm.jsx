@@ -299,7 +299,11 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
             // Sanitize sessionDetails to remove undefined/null/empty values and convert dates
             const cleanSessionDetails = sanitizeForSupabase(sessionDetails);
 
-            console.log('Inserting session with data:', cleanSessionDetails);
+            console.log('=== TRIAL SESSION CREATION DEBUG ===');
+            console.log('Raw sessionDetails:', sessionDetails);
+            console.log('Sanitized sessionDetails:', cleanSessionDetails);
+            console.log('Keys being sent:', Object.keys(cleanSessionDetails));
+            console.log('Session object:', JSON.stringify(cleanSessionDetails, null, 2));
 
             // 1. Insert the parent session
             const { data: sessionData, error: sessionError } = await supabase
