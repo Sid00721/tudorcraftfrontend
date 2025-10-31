@@ -1,5 +1,26 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
+
+// Helper function to serialize data safely for Supabase
+const sanitizeForSupabase = (obj) => {
+    const sanitized = {};
+    Object.entries(obj).forEach(([key, value]) => {
+        // Skip undefined, null, empty strings, and empty objects
+        if (value === undefined || value === null || value === '') {
+            return;
+        }
+        // Convert Date objects to ISO strings
+        if (value instanceof Date) {
+            sanitized[key] = value.toISOString();
+        } else if (typeof value === 'object' && Object.keys(value).length === 0) {
+            // Skip empty objects
+            return;
+        } else {
+            sanitized[key] = value;
+        }
+    });
+    return sanitized;
+};
 import DateTimePicker from "react-datetime-picker";
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import GooglePlacesAutocomplete from './components/GooglePlacesAutocomplete';
@@ -275,25 +296,45 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
         setLoading(true);
 
         try {
+            // Sanitize sessionDetails to remove undefined/null/empty values and convert dates
+            const cleanSessionDetails = sanitizeForSupabase(sessionDetails);
+
+            console.log('Inserting session with data:', cleanSessionDetails);
+
             // 1. Insert the parent session
             const { data: sessionData, error: sessionError } = await supabase
                 .from('trial_sessions')
-                .insert([sessionDetails])
+                .insert([cleanSessionDetails])
                 .select('id, parent_name, parent_email, parent_phone, location, created_at')
                 .single();
 
-            if (sessionError) throw sessionError;
+            if (sessionError) {
+                console.error('Session insert error:', sessionError);
+                throw sessionError;
+            }
 
-            // 2. Prepare the lessons with the new session_id
-            const lessonsToInsert = lessons.map(lesson => ({
-                ...lesson,
-                session_id: sessionData.id,
-            }));
-            
+            console.log('Session created with ID:', sessionData.id);
+
+            // 2. Prepare the lessons with the new session_id, using sanitization
+            const lessonsToInsert = lessons.map(lesson => {
+                const cleanLesson = sanitizeForSupabase(lesson);
+                return {
+                    ...cleanLesson,
+                    session_id: sessionData.id,
+                };
+            });
+
+            console.log('Inserting lessons:', lessonsToInsert);
+
             // 3. Insert all the lessons
-            const { error: lessonsError } = await supabase.from('trial_lessons').insert(lessonsToInsert);
+            const { data: lessonsData, error: lessonsError } = await supabase.from('trial_lessons').insert(lessonsToInsert);
 
-            if (lessonsError) throw lessonsError;
+            if (lessonsError) {
+                console.error('Lessons insert error:', lessonsError);
+                throw lessonsError;
+            }
+
+            console.log('Lessons created successfully');
 
             alert('Trial session created successfully!');
             if(onTrialRequestAdded) {
