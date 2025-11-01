@@ -58,19 +58,24 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
         location: '',
     });
 
-    const [lessons, setLessons] = useState([
-        { 
-            student_name: '', 
-            student_grade: '', 
-            subject_id: null, 
-            lesson_datetime: new Date(), 
-            duration_minutes: 60,
-            student_level: '', // 'catching_up', 'holding_steady', 'ready_to_excel'
-            unit_module: '', // For science subjects: NSW modules 1-8, Other states units 1-4
-            english_text: '', // For English subjects: specific text being studied
-            lesson_timezone: 'Australia/Sydney' // Add timezone to lesson level
-        }
-    ]);
+    const [lessons, setLessons] = useState(() => {
+        // Default lesson time is 24 hours from now
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return [
+            {
+                student_name: '',
+                student_grade: '',
+                subject_id: null,
+                lesson_datetime: tomorrow,
+                duration_minutes: 60,
+                student_level: '', // 'catching_up', 'holding_steady', 'ready_to_excel'
+                unit_module: '', // For science subjects: NSW modules 1-8, Other states units 1-4
+                english_text: '', // For English subjects: specific text being studied
+                lesson_timezone: 'Australia/Sydney' // Add timezone to lesson level
+            }
+        ];
+    });
     
     const timezones = [
         { value: "Australia/Sydney", label: "NSW/VIC/ACT/TAS (AEST)" },
@@ -268,13 +273,17 @@ export default function AddTrialRequestForm({ onTrialRequestAdded, onCancel }) {
     };
 
     const addLesson = () => {
+        // New lessons default to 24 hours from now
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
         setLessons([
             ...lessons,
-            { 
-                student_name: '', 
-                student_grade: '', 
-                subject_id: null, 
-                lesson_datetime: new Date(), 
+            {
+                student_name: '',
+                student_grade: '',
+                subject_id: null,
+                lesson_datetime: tomorrow,
                 duration_minutes: 60,
                 student_level: '',
                 unit_module: '',
