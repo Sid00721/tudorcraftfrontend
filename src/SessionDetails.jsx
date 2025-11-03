@@ -85,9 +85,11 @@ export default function SessionDetails() {
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to assign tutor.');
-            
+
             alert('Tutor successfully assigned!');
-            setSession(data.session); // Update session state with the returned data
+            if (data.session) {
+                setSession(data.session); // Update session state with the returned data
+            }
             setMatchedTutors([]); // Clear the matched tutors list
 
         } catch (error) {
@@ -406,8 +408,8 @@ export default function SessionDetails() {
                                                             </Box>
                                                         </TableCell>
                                                     </TableRow>
-                                                ) : matchedTutors.length > 0 ? (
-                                                    matchedTutors.map(tutor => (
+                                                ) : (matchedTutors && matchedTutors.length > 0) ? (
+                                                    (matchedTutors || []).map(tutor => (
                                                         <TableRow 
                                                             key={tutor.id}
                                                             sx={{
@@ -481,7 +483,7 @@ export default function SessionDetails() {
                                 </Box>
 
                                 {/* Outreach Action */}
-                                {matchedTutors.length > 0 && session.status === 'Pending' && (
+                                {(matchedTutors && matchedTutors.length > 0) && session.status === 'Pending' && (
                                     <Alert 
                                         severity="success" 
                                         sx={{ 
@@ -516,7 +518,7 @@ export default function SessionDetails() {
                                             Ready to Go!
                                         </Typography>
                                         <Typography variant="body2" sx={{ color: '#6B7280' }}>
-                                            You have a shortlist of {matchedTutors.length} qualified tutor{matchedTutors.length !== 1 ? 's' : ''}. Start automated outreach to contact them.
+                                            You have a shortlist of {matchedTutors?.length || 0} qualified tutor{(matchedTutors?.length || 0) !== 1 ? 's' : ''}. Start automated outreach to contact them.
                                         </Typography>
                                     </Alert>
                                 )}
