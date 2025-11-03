@@ -67,7 +67,7 @@ export default function SessionDetails() {
             const response = await fetch(`${API_URL}/api/sessions/${sessionId}/match`, { method: 'POST' });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to fetch matches.');
-            setMatchedTutors(data.matchedTutors);
+            setMatchedTutors(data.matchedTutors || []);
         } catch (error) {
             console.error('Failed to fetch matches', error);
             alert('Error: ' + error.message);
@@ -103,10 +103,14 @@ export default function SessionDetails() {
     const handleStartOutreach = async () => {
         setIsStartingOutreach(true);
         try {
+            const tutorsToSend = matchedTutors || [];
+            if (tutorsToSend.length === 0) {
+                throw new Error('No tutors available for outreach.');
+            }
             const response = await fetch(`${API_URL}/api/sessions/${sessionId}/start-outreach`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ matchedTutors }),
+                body: JSON.stringify({ matchedTutors: tutorsToSend }),
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to start outreach.');
